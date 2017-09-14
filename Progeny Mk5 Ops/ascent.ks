@@ -11,29 +11,14 @@ set currEC to EClvl.
 until time:seconds >= launchTime {
   if not abort and currEC - EClvl >= maxECdrain {
     output("[WARNING] EC drain is " + round(currEC - EClvl, 3) + "ec/s, vessel will run out of EC early").
-    set abort to true.
-    set abortMsg to "excessive EC drain".
+    setAbort(true, "excessive EC drain").
   }
   if abort and currEC - EClvl < maxECdrain {
     output("EC drain is nominal @ " + round(currEC - EClvl, 3) + "ec/s").
-    set abort to false.
+    setAbort(false).
   }  
   set currEC to EClvl.
   wait 0.01.
-}
-
-// setup triggers to know when to change our run state based on external commands
-on AG6 {
-  output("Stage one separation commanded").
-  set runState to 2.
-}
-on AG5 {
-  output("Stage two separation commanded").
-  set runState to 5.
-}
-on AG4 {
-  output("Stage three fin shred commanded @ " + round(ship:altitude/1000, 3) + "km").
-  set runState to 8.
 }
 
 // if we are in an abort state, do not continue
@@ -45,34 +30,52 @@ else {
   stage.
   
   // enter ascent runtime
-  until splashdown {
+  until landed {
   
     // stage 1 boost
     if runstate = 0 and stageOne = "Flame-Out!" {
-      output("Stage one boost completed").
+      output("Stage one boost completed, detaching. Pitch is " + pitch_for(ship)).
       set phase to "Stage Two Coast".
-      set runState to 1.
+      AG6 on.
+      set runState to 2.
+      set startPitch to pitch_for(ship).
     }
     
     // stage 2 coast to ignition
-    else if runState = 2 and stageTwo = "Nominal" {
-      output("Stage two boost started").
-      set phase to "Stage Two Boost".
-      set runState to 3.
+    else if runState = 2 {
+      if stageTwo = "Nominal" {
+        output("Stage two boost started").
+        set phase to "Stage Two Boost".
+        set runState to 3.
+        
+      // monitor pitch change and notify when it exceeds limit
+      } else if startPitch - pitch_for(ship) >= pitchLimit {
+        output("pitch limit exceeded @ " + pitch_for(ship)).
+        set startPitch to 0.
+      } else if ship:verticalspeed < 100 set s2VS to true.
     }
     
     // stage 2 boost
     else if runstate = 3 and stageTwo = "Flame-Out!" {
-      output("Stage two boost completed").
+      output("Stage two boost completed, detaching. Pitch is " + pitch_for(ship)).
       set phase to "Stage Three Coast".
-      set runState to 4.
+      AG5 on.
+      set runState to 5.
+      set startPitch to pitch_for(ship).
     }
     
     // stage 3 coast to ignition
-    else if runState = 5 and stageThree = "Nominal" {
-      output("Stage three boost started").
-      set phase to "Stage Three Boost".
-      set runState to 6.
+    else if runState = 5 {
+      if stageThree = "Nominal" {
+        output("Stage three boost started").
+        set phase to "Stage Three Boost".
+        set runState to 6.
+        
+      // monitor pitch change and notify when it exceeds limit
+      } else if startPitch - pitch_for(ship) >= pitchLimit {
+        output("pitch limit exceeded @ " + pitch_for(ship)).
+        set startPitch to 0.
+      } else if ship:verticalspeed < 100 set s3VS to true.
     }
 
     // stage 3 boost
@@ -80,6 +83,13 @@ else {
       output("Stage three boost completed").
       set phase to "Stage Three Coast".
       set runState to 7.
+    }
+    
+    // stage 3 coast to fin shred
+    else if runstate = 7 and ship:altitude >= 60000 {
+      AG4 on.
+      output("Stage three fin shred @ " + round(ship:altitude/1000, 3) + "km").
+      set runState to 8.
     }
     
     // stage 3 coast to apokee
@@ -103,11 +113,14 @@ else {
       set runState to 11.
     }
     
-    // coast to splashdown
+    // coast to landing
     else if runstate = 11 { 
-      if ship:altitude <= 0 or abs(ship:verticalspeed) < 1 {
-        output("Splashdown @ " + round(abs(chuteSpeed), 3) + "m/s").
-        set splashdown to true.
+      if ship:status = "SPLASHED" {
+        output("Splashdown @ " + round(abs(chuteSpeed), 3) + "m/s, " + round(circle_distance(launchPosition, ship:geoposition, ship:orbit:body:radius)/1000, 3) + "km downrange").
+        set landed to true.
+      } else if ship:status = "LANDED" {
+        output("Touchdown @ " + round(abs(chuteSpeed), 3) + "m/s, " + round(circle_distance(launchPosition, ship:geoposition, ship:orbit:body:radius)/1000, 3) + "km downrange").
+        set landed to true.
       } else if time:seconds - currTime >= logInterval { set chuteSpeed to ship:verticalspeed. }
     }
     
@@ -116,5 +129,11 @@ else {
       set currTime to floor(time:seconds).
       logTlm().
     }
+    
+    wait 0.01.
   }
 }
+
+// log these flags so we know if the events were triggered
+output("s2VS = " + s2VS, false).
+output("s3VS = " + s3VS, false).

@@ -2,8 +2,9 @@
 // Initilaization
 //////////////////
 
-set initialVelocity to ship:velocity:surface:mag.
+set loggingAllowed to true.
 set launchPosition to ship:geoposition.
+set lastVectorPosition to ship:geoposition:altitudeposition(ship:altitude).
 set surfaceGravity to (ship:orbit:body:mass * constant:G)/(ship:orbit:body:radius^2).
 set dstTraveled to 0.
 set pathData to lexicon().
@@ -20,7 +21,7 @@ pathData:add("phase", phaseData).
 if archive:exists(ship:name + ".csv") archive:delete(ship:name + ".csv").
 
 // create the CSV headers
-log "UT,Heading,Pitch,Roll,Distance Traveled (m),Dynamic Pressure (Q),Mass (t),Angle of Attack,Altitude (m),Lat,Lon,Apoapsis (m),Periapsis (m),Inclination,Velocity (m/s),Thrust,Gravity,Distance Downrange (m),Throttle" to ship:name + ".csv".
+log "UT,Heading,Pitch,Roll,Distance Traveled (m),Dynamic Pressure (Q),Mass (t),Angle of Attack,Altitude (m),Lat,Lon,Apoapsis (m),Periapsis (m),Inclination,Velocity (m/s),Thrust (kN),Gravity,Distance Downrange (m),Throttle" to ship:name + ".csv".
 
 ////////////
 // Functions
@@ -88,20 +89,25 @@ function roll_for {
 
 // log the data each - whatever. Calling program will decide how often to log
 function logTlm {
-
+  
+  // if free space has fallen below a certain limit, cease logging
+  if core:volume:freespace < 500 set loggingAllowed to false.
+  if not loggingAllowed return.
+  
+  // logging destination determined by signal status
+  if hasSignal set logVol to "0:".
+  if not hasSignal set logVol to "1:".
+  
   // log position data so an ascent path can be rendered after the launch
   geoData:add(ship:geoposition).
   altData:add(ship:altitude).
   vecData:add(ship:facing:vector).
   phaseData:add(phase).
-  writejson(pathData, ship:name + ".json").
+  writejson(pathData, logVol + ship:name + ".json").
   
-  // update our distance traveled every second based on our speed (which is in m/s)
-  // https://answers.yahoo.com/question/index?qid=20100423120148AADAkZ2
-  set a to (initialVelocity - ship:velocity:surface:mag)/logInterval.
-  set d to (initialVelocity * logInterval) + 0.5 * ((a * logInterval)^2).
-  set dstTraveled to dstTraveled + d.
-  set initialVelocity to ship:velocity:surface:mag.
+  // update our distance traveled by getting the magnitude of the vectors from our last to current position
+  set dstTraveled to dstTraveled + (ship:geoposition:altitudeposition(ship:altitude) - lastVectorPosition):mag.
+  set lastVectorPosition to ship:geoposition:altitudeposition(ship:altitude).
 
   // log all the data
   log currTime + "," +
@@ -122,12 +128,6 @@ function logTlm {
     ship:availablethrust + "," +
     surfaceGravity/((((ship:orbit:body:radius + ship:altitude)/1000)/(ship:orbit:body:radius/1000))^2) + "," +
     circle_distance(launchPosition, ship:geoposition, ship:orbit:body:radius) + "," +
-    ship:control:pilotmainthrottle
-  to ship:name + ".csv".
-  
-  // copy data to the archive if we have a connection
-  if hasSignal {
-    copypath(ship:name + ".csv", "0:").
-    copypath(ship:name + ".json", "0:").
-  }
+    ((ship:control:mainthrottle) * 100) + "%"
+  to logVol + ship:name + ".csv".
 }
