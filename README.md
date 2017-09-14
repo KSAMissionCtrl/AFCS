@@ -7,6 +7,26 @@ Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Change Log
 
+**Progeny Mk5 Flight 2** (9/13/17)
+
+AFCS:
+  - [logger.ks] Replaced the inaccurate distance traveled measuring code with a new method to try out
+  - [logger.ks] Log straight to the archive at KSC if comm connection is established, otherwise write to disk
+  - [logger.ks] Stop logging if we fill up almost all the disk space so the running code does not terminate
+  - [logger.ks] Specify thrust measured in kilonewtons (kN) in log output header
+  - [logger.ks] Change throttle readout variable to get proper value & display it as a percentage
+  
+Operations:
+  - [ascent.ks] Wrapped abort setting into a function for more flexibility in enabling/disabling the abort state and setting the reasons for the abort
+  - [ascent.ks] Ascent monitoring loop interrupt now more generically named to `landed` from `splashdown`
+  - [ascent.ks] Boosters are automatically decoupled immediately after flame-out is detected
+  - [ascent.ks] Pitch monitoring readouts in the log will test to see how accurate the code is at reporting pitch change from separation and will signal booster ignition point but not automatically stage boosters
+  - [ascent.ks] Flags added to detect if vertical speed has fallen below 100m/s, the backup stage ignition point (no automatic action taken just monitoring)
+  - [ascent.ks] 3rd stage fins are automatically shredded at 60km
+  - [ascent.ks] Landing state monitored from environment sensor to detect & note in log landing on land or in water
+  - [ascent.ks] `wait 0.01.` was a critical peice of missing code in the ascent runtime loop
+  - [initialize.ks] Holds the function that sets the abort state
+
 **Progeny Mk5 Flight 1** (9/7/17)
 
 AFCS:
