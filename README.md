@@ -7,6 +7,26 @@ Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Change Log
 
+**Progeny Mk5 Flight 3** (9/18/17)
+
+AFCS:
+  - [boot.ks] Operations log output now uses uniform timestamps with leading zeros for single-digit numbers and 00.00 for whole minutes
+  - [logger.ks] Distance traveled measurement removed until a better solution can be worked up
+  - [logger.ks] Mission Elapsed Time added to log output (passed along via operational script as logger would not otherwise know the time of launch)
+  - [logger.ks] Calculate Throttle percentage added to log output to determine whether equation to calculate the throttle needed for a set TWR is good
+  - [logger.ks] Dynamic Pressure is now logged in kilopascals (kPa) rather than units of standard atmospheric pressure
+  - [logger.ks] CSV header is now outputted to archive copy rather than local copy of the log file
+  
+Operations:
+  - [ascent.ks] Additional triggers set for new operations log outputs for MaxQ, Apokee reaching 70km, rocket reaching 70km, rocket falling back through 70km
+  - [ascent.ks] run state to monitor reaching apokee is now a trigger
+  - [ascent.ks] Solid boosters are now staged 1 second after flame-out instead of immediately to prevent them from bumping into the upper stages
+  - [ascent.ks] Engines are ignited after 1.5° of pitch change or if vertical speed drops below 100m/s
+  - [ascent.ks] Pitch value output to the operations log is constrained to 3 decimal places
+  - [ascent.ks] Chute deployment is triggered via altitude rather than built-in pressure sensor (now used as backup)
+  - [initialize.ks] Test flags for vertical speed monitoring removed
+  - [science.ks] New routine for handling of payload instruments. Nothing complex yet
+  
 **Progeny Mk5 Flight 2** (9/13/17)
 
 AFCS:
