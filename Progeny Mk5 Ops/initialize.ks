@@ -6,15 +6,15 @@ runpath("0:logger.ks").
 // initialize variables
 set abort to false.
 set landed to false.
-set s2VS to false.
-set s3VS to false.
 set runstate to 0.
+set stageCountdown to 0.
 set phase to "Stage One Ascent".
 set abortMsg to "undefined reasons".
-set launchTime to 31670940.
+set launchTime to 32038980.
 set maxECdrain to 2.608695652.
 set logInterval to 1.
 set pitchLimit to 1.5.
+set maxQ to 0.
 set currTime to floor(time:seconds).
 
 // monitor electric charge

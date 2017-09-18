@@ -6,7 +6,6 @@ set loggingAllowed to true.
 set launchPosition to ship:geoposition.
 set lastVectorPosition to ship:geoposition:altitudeposition(ship:altitude).
 set surfaceGravity to (ship:orbit:body:mass * constant:G)/(ship:orbit:body:radius^2).
-set dstTraveled to 0.
 set pathData to lexicon().
 set altData to list().
 set geoData to list().
@@ -21,7 +20,9 @@ pathData:add("phase", phaseData).
 if archive:exists(ship:name + ".csv") archive:delete(ship:name + ".csv").
 
 // create the CSV headers
-log "UT,Heading,Pitch,Roll,Distance Traveled (m),Dynamic Pressure (Q),Mass (t),Angle of Attack,Altitude (m),Lat,Lon,Apoapsis (m),Periapsis (m),Inclination,Velocity (m/s),Thrust (kN),Gravity,Distance Downrange (m),Throttle" to ship:name + ".csv".
+log "UT,MET (s)Heading,Pitch,Roll,Dynamic Pressure - Q (kPa),Mass (t),Angle of Attack,Altitude (m),Lat,Lon,Apoapsis (m),Periapsis (m),Inclination,Velocity (m/s),Thrust (kN),Gravity,Distance Downrange (m), Actual Throttle, Calculated Throttle" to "0:" + ship:name + ".csv".
+
+output("logger ready").
 
 ////////////
 // Functions
@@ -89,6 +90,7 @@ function roll_for {
 
 // log the data each - whatever. Calling program will decide how often to log
 function logTlm {
+  parameter met.
   
   // if free space has fallen below a certain limit, cease logging
   if core:volume:freespace < 500 set loggingAllowed to false.
@@ -105,17 +107,20 @@ function logTlm {
   phaseData:add(phase).
   writejson(pathData, logVol + ship:name + ".json").
   
-  // update our distance traveled by getting the magnitude of the vectors from our last to current position
-  set dstTraveled to dstTraveled + (ship:geoposition:altitudeposition(ship:altitude) - lastVectorPosition):mag.
-  set lastVectorPosition to ship:geoposition:altitudeposition(ship:altitude).
+  // calculate the new gravity value
+  set grav to surfaceGravity/((((ship:orbit:body:radius + ship:altitude)/1000)/(ship:orbit:body:radius/1000))^2).
+  
+  // ensure we have thrust so there is no division by zero
+  if ship:availablethrust set twrThrottle to (3 * ship:mass * grav / ship:availablethrust) * 100.
+  if not ship:availablethrust set twrThrottle to 0.
 
   // log all the data
   log currTime + "," +
+    met + "," +
     compass_for(ship) + "," +
     pitch_for(ship) + "," +
     roll_for(ship) + "," +
-    dstTraveled + "," +
-    ship:Q + "," +
+    (ship:Q * constant:ATMtokPa) + "," +
     ship:mass + "," +
     VANG(ship:facing:vector, ship:srfprograde:vector) + "," +
     ship:altitude + "," +
@@ -126,8 +131,9 @@ function logTlm {
     ship:orbit:inclination + "," +
     ship:velocity:surface:mag + "," +
     ship:availablethrust + "," +
-    surfaceGravity/((((ship:orbit:body:radius + ship:altitude)/1000)/(ship:orbit:body:radius/1000))^2) + "," +
+    grav + "," +
     circle_distance(launchPosition, ship:geoposition, ship:orbit:body:radius) + "," +
-    ((ship:control:mainthrottle) * 100) + "%"
+    ship:control:mainthrottle + "%," + 
+    twrThrottle + "%"
   to logVol + ship:name + ".csv".
 }

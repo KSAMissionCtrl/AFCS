@@ -25,10 +25,20 @@ function output {
 
   // print to console if requested
   if toConsole print text.
-
+  
+  // format the timestamp
+  set hours to time:hour.
+  set minutes to time:minute.
+  set seconds to time:second.
+  set mseconds to round(time:seconds - floor(time:seconds), 2) * 100.
+  if hours < 10 set hours to "0" + hours.
+  if minutes < 10 set minutes to "0" + minutes.
+  if seconds < 10 set seconds to "0" + seconds.
+  if mseconds < 10 set mseconds to "0" + mseconds.
+  
   // log the new data to the file if it will fit
   // otherwise delete the log to start anew
-  set logStr to "[" + time:hour + ":" + time:minute + ":" + (time:second + round(time:seconds - floor(time:seconds), 2)) + "] " + text.
+  set logStr to "[" + hours + ":" + minutes + ":" + seconds + "." + mseconds + "] " + text.
   if core:volume:freespace > logStr:length {
     log logStr to ship:name + ".log.np2".
   } else {
