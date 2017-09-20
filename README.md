@@ -7,6 +7,22 @@ Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Change Log
 
+**Progeny Mk5 Flight 4** (9/20/17)
+
+AFCS:
+  - [helpFunc.ks] New script containing general functions that can be useful in a variety of situations
+  - [helpFunc.ks] `getAvailableThrust` ensures that a value of 0 is never returned so that division operations always work okay
+  - [logger.ks] New data fields for Electric Charge levels in both units and percentage, still allows operations code to use `EClvl` to monitor
+  - [logger.ks] Fixed missing comma seperator between MET and Heading fields
+  
+Operations:
+  - [ascent.ks] Fixed `maxQ` to update each loop so script knows when it occurs and logs it properly
+  - [ascent.ks] New automation to control throttle to a set TWR
+  - [ascent.ks] New automation to throttle up to full once dynamic pressure begins to drop
+  - [ascent.ks] Removed errant command to decouple second stage booster immediately after flame-out
+  - [initialize.ks] Added `helperFunc.ks` to includes
+  - [initialize.ks] New variable `desiredTWR` to control third stage burn
+
 **Progeny Mk5 Flight 3** (9/18/17)
 
 AFCS:
