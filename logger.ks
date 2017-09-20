@@ -16,11 +16,21 @@ pathData:add("geo", geoData).
 pathData:add("vec", vecData).
 pathData:add("phase", phaseData).
 
+// monitor electric charge
+list resources in resList.
+for res in resList { 
+  if res:name = "electriccharge" { 
+    lock EClvl to res:amount. 
+    set fullChargeEC to res:capacity.
+    break.
+  } 
+}
+
 // ensure any previous data is overwritten
 if archive:exists(ship:name + ".csv") archive:delete(ship:name + ".csv").
 
 // create the CSV headers
-log "UT,MET (s)Heading,Pitch,Roll,Dynamic Pressure - Q (kPa),Mass (t),Angle of Attack,Altitude (m),Lat,Lon,Apoapsis (m),Periapsis (m),Inclination,Velocity (m/s),Thrust (kN),Gravity,Distance Downrange (m), Actual Throttle, Calculated Throttle" to "0:" + ship:name + ".csv".
+log "UT,MET (s),Heading,Pitch,Roll,Dynamic Pressure - Q (kPa),Mass (t),Angle of Attack,Altitude (m),Lat,Lon,Apoapsis (m),Periapsis (m),Inclination,Velocity (m/s),Thrust (kN),Gravity,Distance Downrange (m), Throttle, Electric Charge, EC/Capacity" to "0:" + ship:name + ".csv".
 
 output("logger ready").
 
@@ -110,10 +120,6 @@ function logTlm {
   // calculate the new gravity value
   set grav to surfaceGravity/((((ship:orbit:body:radius + ship:altitude)/1000)/(ship:orbit:body:radius/1000))^2).
   
-  // ensure we have thrust so there is no division by zero
-  if ship:availablethrust set twrThrottle to (3 * ship:mass * grav / ship:availablethrust) * 100.
-  if not ship:availablethrust set twrThrottle to 0.
-
   // log all the data
   log currTime + "," +
     met + "," +
@@ -133,7 +139,8 @@ function logTlm {
     ship:availablethrust + "," +
     grav + "," +
     circle_distance(launchPosition, ship:geoposition, ship:orbit:body:radius) + "," +
-    ship:control:mainthrottle + "%," + 
-    twrThrottle + "%"
+    ship:control:mainthrottle + "%," +
+    round(EClvl, 2) + "," + 
+    round(100 * EClvl / fullChargeEC, 2) + "%"
   to logVol + ship:name + ".csv".
 }

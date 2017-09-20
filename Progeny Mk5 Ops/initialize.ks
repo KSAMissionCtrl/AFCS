@@ -2,6 +2,7 @@ output("Vessel boot up").
 
 // include needed AFCS files
 runpath("0:logger.ks").
+runpath("0:helpFunc.ks").
 
 // initialize variables
 set abort to false.
@@ -10,21 +11,13 @@ set runstate to 0.
 set stageCountdown to 0.
 set phase to "Stage One Ascent".
 set abortMsg to "undefined reasons".
-set launchTime to 32038980.
+set launchTime to 32190540.
 set maxECdrain to 2.608695652.
 set logInterval to 1.
 set pitchLimit to 1.5.
 set maxQ to 0.
+set desiredTWR to 3.
 set currTime to floor(time:seconds).
-
-// monitor electric charge
-list resources in resList.
-for res in resList { 
-  if res:name = "electriccharge" { 
-    lock EClvl to res:amount. 
-    break.
-  } 
-}
 
 // keep track of part status
 lock stageOne to ship:partstagged("srb1")[0]:getmodule("ModuleEnginesFX"):getfield("status").

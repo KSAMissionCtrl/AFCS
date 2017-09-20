@@ -40,7 +40,7 @@ else {
       set phase to "Apokee".
     }
   }
-  when maxQ > ship:q then output("MaxQ: " + (ship:Q * constant:ATMtokPa) + "kPa").
+  when maxQ > ship:q then output("MaxQ: " + round(ship:Q * constant:ATMtokPa, 3) + "kPa").
   when ship:apoapsis > 70000 then output("We are going to space!").
   
   // enter ascent runtime
@@ -51,8 +51,8 @@ else {
       output("Stage one boost completed, standing by to decouple. Pitch is " + round(pitch_for(ship), 3)).
       set phase to "Stage Two Coast".
       set stageCountdown to time:seconds.
-      set runState to 1.1.
       set startPitch to pitch_for(ship).
+      set runState to 1.1.
     }
     
     // stage 1 decouple after 1 second wait
@@ -74,10 +74,9 @@ else {
     else if runstate = 3 and stageTwo = "Flame-Out!" {
       output("Stage two boost completed, standing by to decouple. Pitch is " + round(pitch_for(ship), 3)).
       set phase to "Stage Three Coast".
-      AG5 on.
       set stageCountdown to time:seconds.
-      set runState to 4.
       set startPitch to pitch_for(ship).
+      set runState to 4.
     }
     
     // stage 2 decouple after 1 second wait
@@ -93,12 +92,22 @@ else {
       stage.
       set phase to "Stage Three Boost".
       set runState to 6.
+      wait 0.01.
+      lock throttle to desiredTWR * ship:mass * (surfaceGravity/((((ship:orbit:body:radius + ship:altitude)/1000)/(ship:orbit:body:radius/1000))^2)) / getAvailableThrust().
     }
 
     // stage 3 boost
-    else if runstate = 6 and stageThree = "Flame-Out!" {
+    else if runstate = 6 and maxQ > ship:q {
+      output("Throttle to full").
+      lock throttle to 1.
+      set runState to 6.1.
+    }
+
+    // stage 3 cutoff
+    else if runstate = 6.1 and stageThree = "Flame-Out!" {
       output("Stage three boost completed").
       set phase to "Stage Three Coast".
+      unlock throttle.
       set runState to 7.
     }
     
@@ -142,6 +151,7 @@ else {
       logTlm(currTime - launchTime).
     }
     
+    set maxQ to ship:q.
     wait 0.01.
   }
 }
