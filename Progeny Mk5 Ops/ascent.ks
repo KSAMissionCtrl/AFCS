@@ -92,12 +92,13 @@ else {
       stage.
       set phase to "Stage Three Boost".
       set runState to 6.
+      set stageCountdown to time:seconds.
       wait 0.01.
       lock throttle to desiredTWR * ship:mass * (surfaceGravity/((((ship:orbit:body:radius + ship:altitude)/1000)/(ship:orbit:body:radius/1000))^2)) / getAvailableThrust().
     }
 
     // stage 3 boost
-    else if runstate = 6 and maxQ > ship:q {
+    else if runstate = 6 and time:seconds - stageCountdown >= 1 and maxQ > ship:q {
       output("Throttle to full").
       lock throttle to 1.
       set runState to 6.1.
