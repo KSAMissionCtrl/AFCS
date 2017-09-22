@@ -7,6 +7,11 @@ Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Change Log
 
+**Progeny Mk5 Flight 5** (9/22/17)
+
+Operations:
+  - [ascent.ks] Fixed the code monitoring for decrease in dynamic pressure so it does not run until a second after ignition to allow dynamic pressure to begin to increase first
+
 **Progeny Mk5 Flight 4** (9/20/17)
 
 AFCS:
