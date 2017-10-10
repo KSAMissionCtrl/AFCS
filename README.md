@@ -2,10 +2,25 @@
 Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Systems
-**Logger** - monitors and stores various flight parameters   
+**Logger** - monitors and stores various flight parameters, outputs generic status updates   
 **Boot** - sets up the environment and runs operations uploaded to the probe core
 
+## Known Issues
+
+- When saving changes to the operations file, a file-sharing access error can crash the boot script. It tends to happen more often with small instruction sizes of only a few lines, and can be avoided more often than not if additional empty lines are added
+
 ## Change Log
+
+**Boot upgrade** (10/10/17)
+
+AFCS:
+  - [boot.ks] Can now run multiple continuous operations through the use of function delegates assigned to the `operations` lexicon by any loaded instructions
+  - [boot.ks] An operations file is created in the root archive that controllers can paste code into and save, which will then be read by the spacecraft and the file cleared to await additional instructions
+  - [boot.ks] The `deleteOnFinish` flag has been brought back to tell the spacecraft not to save an operations file after it has been uploaded
+  - [boot.ks] AFCS dependencies are now loaded by the boot script rather than an operations script, and generically loads any files found in the /includes directory on the archive
+  - [boot.ks] Removed the `download` function as there is no longer a need to load operations files of non-specific names, only look for a new boot file or changes to the operations file
+  - [boot.ks] If a new bootscript is found it is now loaded into the proper location in the /boot directory of the spacecraft volume
+  - [logger.ks] The `output` function has been moved into here
 
 **Progeny Mk5 Flight 5** (9/22/17)
 
