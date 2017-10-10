@@ -4,143 +4,56 @@
 
 clearscreen.
 set opCode to 0.
-set backupOps to false.
 set hasSignal to false.
-
-// date stamp the log
-// won't output to archive copy until first output() call
-set logList to list().
-set logStr to "[" + time:calendar + "] system boot up".
-log logStr to ship:name + ".log.np2".
-logList:add(logStr).
+set deleteOnFinish to false.
+set operations to lexicon().
 
 ////////////
 // Functions
 ////////////
 
-// for logging data, with various considerations
-function output {
-  parameter text.
-  parameter toConsole is true.
-
-  // print to console if requested
-  if toConsole print text.
-  
-  // format the timestamp
-  set hours to time:hour.
-  set minutes to time:minute.
-  set seconds to time:second.
-  set mseconds to round(time:seconds - floor(time:seconds), 2) * 100.
-  if hours < 10 set hours to "0" + hours.
-  if minutes < 10 set minutes to "0" + minutes.
-  if seconds < 10 set seconds to "0" + seconds.
-  if mseconds < 10 set mseconds to "0" + mseconds.
-  
-  // log the new data to the file if it will fit
-  // otherwise delete the log to start anew
-  set logStr to "[" + hours + ":" + minutes + ":" + seconds + "." + mseconds + "] " + text.
-  if core:volume:freespace > logStr:length {
-    log logStr to ship:name + ".log.np2".
-  } else {
-    core:volume:delete(ship:name + ".log.np2").
-    log "[" + time:calendar + "] new file" to ship:name + ".log.np2".
-    log logStr to ship:name + ".log.np2".
-  }
-
-  // store a copy on KSC hard drives if we are in contact
-  // otherwise save and copy over as soon as we are back in contact
-  if hasSignal {
-    if not archive:exists(ship:name + ".log.np2") archive:create(ship:name + ".log.np2").
-    if logList:length {
-      for entry in logList archive:open(ship:name + ".log.np2"):writeln(entry).
-      set logList to list().
-    }
-    archive:open(ship:name + ".log.np2"):writeln(logStr).
-  } else {
-    if core:volume:freespace > logStr:length {
-      logList:add(logStr).
-    } else {
-      core:volume:delete(ship:name + ".log.np2").
-      logList:add("[" + time:calendar + "] new file").
-      logList:add(logStr).
-    }
-  }
-}
-
-// checks if the requested file exists on the KSC disk
-// checks if there is enough room to copy a file from the archive to the vessel
-// will remove the log file if the space it frees will allow the transfer
-// also accounts for wether the transfer file has a local copy that will be replaced
-function download {
-  parameter archiveFile, localFile.
-  if not hasSignal return false.
-  if not archive:exists(archiveFile) return false.
-  if core:volume:exists(localFile) set localFileSize to core:volume:open(localFile):size.
-  else set localFileSize to 0.
-  set archiveFileSize to archive:open(archiveFile):size.
-  if core:volume:freespace - archiveFileSize + localFileSize < 0 {
-    if core:volume:freespace - archiveFileSize + localFileSize + core:volume:open(ship:name + ".log.np2"):size > 0 {
-      copypath(ship:name + ".log.backup.np2", "0:").
-      core:volume:delete(ship:name + ".log.np2").
-      output("deleting log to free up space").
-    } else {
-      output("unable to copy file " + archiveFile + ". Not enough disk space").
-      return false.
-    }
-  }
-  movepath("0:" + archiveFile, localFile).
-  archive:delete(archiveFile).
-  if localFileSize core:volume:delete(localFile).
-  return true.
-}
-
-// runs any available operations or waits for new ops
-// once a run is complete, new ops are waited on
+// runs any available operations and waits for new ops
 function opsRun {
-  if not core:volume:exists("operations" + opCode + ".ks") and hasSignal {
-    output("waiting to receive operations...").
-    until download(ship:name + ".op.ks.", "operations" + opCode + ".ks") {
-      if not hasSignal {
-        if not core:volume:exists("backup.op.ks") {
-          output("KSC connection lost, awaiting connection...").
-          wait until hasSignal.
-          output("KSC connection regained").
-          opsRun().
-        } else {
-          if core:volume:exists("operations" + opCode + ".ks") core:volume:delete("operations" + opCode + ".ks").
-          set opCode to opCode + 1.
-          rename "backup.op.ks" to "operations" + opCode + ".ks".
-          output("KSC connection lost. Stored operations file loaded").
-          opsRun().
-        }
+  until false {
+    
+    // check if a new ops file is waiting to be executed
+    if hasSignal and not archive:open(ship:name + ".ops.ks"):readall:empty {
+      output("operations received, executing").
+      copypath("0:" + ship:name + ".ops.ks", "/ops/operations" + opCode + ".ks").
+      runpath("/ops/operations" + opCode + ".ks").
+      if deleteOnFinish {
+        core:volume:delete("/ops/operations" + opCode + ".ks").
+        set deleteOnFinish to false.
       }
-      wait 1.
+      set opCode to opCode + 1.
+      output("operations execution complete").
+      output("waiting to receive operations...").
+      archive:open(ship:name + ".ops.ks"):clear.
     }
+    
+    // run any existing ops
+    if operations:length {
+      for op in operations:values op().
+    }
+    
+    wait 0.001.
   }
-  output("executing operations").
-  runpath("operations" + opCode + ".ks").
-  core:volume:delete("operations.ks").
-  set opCode to opCode + 1.
-  output("operations execution complete").
-  opsRun().
 }
 
 ///////////
 // Triggers
 ///////////
 
-// store new instructions while a current operations program is running
-// if we lose connection before a new script is uploaded, this will run
-// running ops should check backupOps flag and call download(ship:name + ".bop.ks.", "backup.op.ks").
-when hasSignal and archive:exists(ship:name + ".bop.ks.") then {
-  set backupOps to true.
-  if hasSignal preserve.
-}
-
 // simulate comm loss manually by toggling action group
-on AG11 {
-  if hasSignal { set hasSignal to false. } 
-  else { set hasSignal to true. }
+on ag1 {
+  if hasSignal { 
+    set hasSignal to false. 
+    output("KSC link lost"). 
+  } else { 
+    set hasSignal to true. 
+    output("KSC link acquired"). 
+    if not archive:exists(ship:name + ".ops.ks") create("0:" + ship:name + ".ops.ks").
+  }
   preserve.
 }
 
@@ -148,33 +61,32 @@ on AG11 {
 // Begin system boot ops
 ////////////////////////
 
-// check if we have new instructions stored in event of comm loss
-if core:volume:exists("backup.op.ks") and not hasSignal {
-  core:volume:delete("operations.ks").
-  rename "backup.op.ks" to "operations.ks".
-  output("KSC connection lost. Stored operations file loaded").
-} else {
-
-  // check for connection to KSC for archive volume access if no instructions stored
-  if not hasSignal {
-    output("waiting for KSC link...").
-    wait until hasSignal.
-  }
-
-  output("KSC link established, fetching operations...").
-
-  // check for a new bootscript
-  // destroy the log if needed to make room, but only if it'll make room
-  if download(ship:name + ".boot.ks", "boot.ks") {
-    output("new system boot file received").
-    wait 1.
-    reboot.
-  }
-
-  // check for new operations
-  // destroy the log if needed to make room, but only if it'll make room
-  if download(ship:name + ".op.ks", "operations" + opCode + ".ks") output("new operations file received").
+// load dependencies - if they are not found we are on the launchpad initializing, so activate comms and load from the archive
+if not core:volume:exists("/includes") {
+  copypath("0:/includes", core:volume:root).
+  set hasSignal to true. 
+  if not archive:exists(ship:name + ".ops.ks") create("0:" + ship:name + ".ops.ks").
 }
+for includeFile in core:volume:open("/includes"):list:values runpath("/includes/" + includeFile).
+
+// date stamp the log
+// won't output to archive copy until first output() call
+set logStr to "[" + time:calendar + "] system boot up".
+log logStr to ship:name + ".log.np2".
+logList:add(logStr).
+
+// check for a new bootscript
+if hasSignal and archive:exists(ship:name + ".boot.ks") {
+  output("new system boot file received").
+  movepath("0:" + ship:name + ".boot.ks", "boot/boot.ks").
+  wait 1.
+  reboot.
+}
+
+if hasSignal output("KSC link acquired, awaiting new operations").
+if not hasSignal output("KSC link not acquired, onboard operations only").
+
+// TODO - reload any operations still stored on disk
 
 ////////////////
 // Begin ops run
