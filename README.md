@@ -8,7 +8,7 @@ Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Change Log
 
-**Progeny Mk5 Flight 6** (9/22/17)
+**Progeny Mk5 Flight 6** (10/12/17)
 
 AFCS:
   - [boot.ks] Slight change to boot-up status text for signal detection
