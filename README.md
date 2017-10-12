@@ -3,13 +3,23 @@ Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Systems
 **Logger** - monitors and stores various flight parameters, outputs generic status updates   
-**Boot** - sets up the environment and runs operations uploaded to the probe core
-
-## Known Issues
-
-- When saving changes to the operations file, a file-sharing access error can crash the boot script. It tends to happen more often with small instruction sizes of only a few lines, and can be avoided more often than not if additional empty lines are added
+**Boot** - sets up the environment and runs operations uploaded to the probe core   
+**HelpFunc** - includes useful general support functions for various operational aspects
 
 ## Change Log
+
+**Progeny Mk5 Flight 6** (9/22/17)
+
+AFCS:
+  - [boot.ks] Slight change to boot-up status text for signal detection
+  - [boot.ks] Real-time reading of the KSC-based operations file has been reverted as the newer method was causing file-access errors to crash the program. You must now place operations files into the archive for the spacecraft to upload
+  
+Operations:
+  - [ascent.ks] Runtime codes removed to use the new function monitoring system, where functions can be pushed to a stack to run every CPU tick, so anything that needs to be monitored can happen in its own function, then that function can call the next function to move to a new state
+  - [ascent.ks] Some previous run states are now just triggers, like detecting chute initial & full deployment and waiting one second for a staging event. All are nested properly so a trigger that can't fire after another won't start to be evaluated until that trigger fires
+  - [ascent.ks] Auto-throttle allows 3rd stage to advance the throttle to full while ensuring dynamic pressure continues to fall
+  - [initialize.ks] Launch time updated, pitch over delta modified, obsolete variables removed, throttle lock placed here as it can be safely used even when no thrust is available
+  - [science.ks] Instruments are now directly referenced and activated, including pad check at boot-up
 
 **Boot upgrade** (10/10/17)
 
