@@ -17,9 +17,10 @@ function opsRun {
   until false {
     
     // check if a new ops file is waiting to be executed
-    if hasSignal and not archive:open(ship:name + ".ops.ks"):readall:empty {
+    if hasSignal and archive:exists(ship:name + ".ops.ks") {
       output("operations received, executing").
       copypath("0:" + ship:name + ".ops.ks", "/ops/operations" + opCode + ".ks").
+      archive:delete(ship:name + ".ops.ks").
       runpath("/ops/operations" + opCode + ".ks").
       if deleteOnFinish {
         core:volume:delete("/ops/operations" + opCode + ".ks").
@@ -28,7 +29,6 @@ function opsRun {
       set opCode to opCode + 1.
       output("operations execution complete").
       output("waiting to receive operations...").
-      archive:open(ship:name + ".ops.ks"):clear.
     }
     
     // run any existing ops
@@ -52,7 +52,6 @@ on ag1 {
   } else { 
     set hasSignal to true. 
     output("KSC link acquired"). 
-    if not archive:exists(ship:name + ".ops.ks") create("0:" + ship:name + ".ops.ks").
   }
   preserve.
 }
@@ -65,7 +64,6 @@ on ag1 {
 if not core:volume:exists("/includes") {
   copypath("0:/includes", core:volume:root).
   set hasSignal to true. 
-  if not archive:exists(ship:name + ".ops.ks") create("0:" + ship:name + ".ops.ks").
 }
 for includeFile in core:volume:open("/includes"):list:values runpath("/includes/" + includeFile).
 
@@ -83,8 +81,8 @@ if hasSignal and archive:exists(ship:name + ".boot.ks") {
   reboot.
 }
 
-if hasSignal output("KSC link acquired, awaiting new operations").
-if not hasSignal output("KSC link not acquired, onboard operations only").
+if hasSignal output("KSC link acquired, awaiting operations").
+if not hasSignal output("KSC link not acquired, onboard operations running").
 
 // TODO - reload any operations still stored on disk
 

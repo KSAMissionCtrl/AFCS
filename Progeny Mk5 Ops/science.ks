@@ -1,4 +1,11 @@
-output("science instruments ready").
+set payload1 to ship:partstagged("payload1")[0]:getmodule("ModuleScienceExperiment").
+set payload2 to ship:partstagged("payload2")[0]:getmodule("ModuleScienceExperiment").
+set probecore to ship:partstagged("probecore")[0]:getmodule("ModuleScienceExperiment").
+
 function runScience {
-  AG1 on.
+  payload1:doevent("record test data").
+  payload2:doevent("log gravity data").
+  probecore:doevent("analyse telemetry").
 }
+runScience().
+output("science instruments ready").
