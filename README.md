@@ -8,6 +8,23 @@ Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Change Log
 
+**Progeny Mk5 Block I Flight 1** (10/19/17)
+
+AFCS:
+  - [boot.ks] Consolidated two log messages into a single line
+  - [logger.ks] Removed helper functions
+  - [helpfunc.ks] Added helper functions from `logger.ks`
+  - Include files are now in their own folder as the boot script expects
+
+Operations:
+  - [ascent.ks] Dump function performance data for code review
+  - [ascent.ks] Removed all generic stage and AG events, replaced with specific part actions
+  - [initialize.ks] New launch time
+  - [initialize.ks] Log performance data for code execution
+  - [initialize.ks] Set ascent profile to begin boost at 1.5° pitch change
+  - [initialize.ks] Get references to more parts needed to carry out various actions that used to be done via stage/AG commands
+  - [science.ks] Update actions to apply to payload instruments
+
 **Progeny Mk5 Flight 6** (10/12/17)
 
 AFCS:
