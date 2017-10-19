@@ -86,66 +86,6 @@ function output {
   }
 }
 
-// from the KSLib
-// https://github.com/KSP-KOS/KSLib/blob/master/library/lib_circle_nav.ks
-function circle_distance {
- parameter
-  p1,     //...this point...
-  p2,     //...to this point...
-  radius. //...around a body of this radius. (note: if you are flying you may want to use ship:body:radius + altitude).
- local A is sin((p1:lat-p2:lat)/2)^2 + cos(p1:lat)*cos(p2:lat)*sin((p1:lng-p2:lng)/2)^2.
-
- return radius*constant():PI*arctan2(sqrt(A),sqrt(1-A))/90.
-}
-
-// from the KSLib
-// https://github.com/KSP-KOS/KSLib/blob/master/library/lib_navball.ks
-function east_for {
-  parameter ves.
-
-  return vcrs(ves:up:vector, ves:north:vector).
-}
-function compass_for {
-  parameter ves.
-
-  local pointing is ves:facing:forevector.
-  local east is east_for(ves).
-
-  local trig_x is vdot(ves:north:vector, pointing).
-  local trig_y is vdot(east, pointing).
-
-  local result is arctan2(trig_y, trig_x).
-
-  if result < 0 {
-    return 360 + result.
-  } else {
-    return result.
-  }
-}
-function pitch_for {
-  parameter ves.
-
-  return 90 - vang(ves:up:vector, ves:facing:forevector).
-}
-function roll_for {
-  parameter ves.
-
-  if vang(ship:facing:vector,ship:up:vector) < 0.2 { //this is the dead zone for roll when the ship is vertical
-    return 0.
-  } else {
-    local raw is vang(vxcl(ship:facing:vector,ship:up:vector), ves:facing:starvector).
-    if vang(ves:up:vector, ves:facing:topvector) > 90 {
-      if raw > 90 {
-        return 270 - raw.
-      } else {
-        return -90 - raw.
-      }
-    } else {
-      return raw - 90.
-    }
-  }
-}
-
 // log the data each - whatever. Calling program will decide how often to log
 function logTlm {
   parameter met.

@@ -46,6 +46,7 @@ function ongoingOps {
     operations:remove("ongoingOps").
     operations:remove("coastToLanding").
     output("flight operations concluded").
+    log profileresult() to ship:name + "kos.csv".
   }
 }
 
@@ -58,8 +59,8 @@ function launch {
   } else {
 
     // launch the rocket
+    srb1:doevent("activate engine").
     output("launch!").
-    stage.
     
     // allow a physics tick then setup some triggers, nested so only a few are running at any given time
     wait 0.01.
@@ -79,7 +80,7 @@ function launch {
       }
     }
     when ship:altitude >= 60000 then {
-      ag4 on.
+      for fin in s3fins { fin:doevent("kaboom!"). }
       output("Stage three fin shred @ " + round(ship:altitude/1000, 3) + "km").
     }
     when ship:apoapsis > 70000 then {
@@ -96,7 +97,7 @@ function launch {
     // handle certain things regardless of what ascent state we are in
     set operations["ongoingOps"] to ongoingOps@.
     
-    // monitor the first stage ascent
+    // wait for first stage boost to complete
     operations:remove("launch").
     set operations["stageOneBoost"] to stageOneBoost@.
   }
@@ -112,7 +113,8 @@ function stageOneBoost {
     // trigger setup to decouple the booster after one second
     set stageCountdown to time:seconds.
     when time:seconds - stageCountdown >= 1 then {
-      ag6 on.
+      for fin in s1fins { fin:doevent("kaboom!"). }
+      s1decoupler:doevent("decouple").
       output("Stage one booster decoupled").
     }
     
@@ -125,8 +127,8 @@ function stageOneBoost {
 
 function stageTwoCoast {
   if startPitch - pitch_for(ship) >= pitchLimit or ship:verticalspeed < 100 {
+    srb2:doevent("activate engine").
     output("Stage two boost started. Pitch is " + round(pitch_for(ship), 3) + ", vertical speed is " + round(ship:verticalspeed, 3) + "m/s").
-    stage.
     set phase to "Stage Two Boost".
     operations:remove("stageTwoCoast").
     set operations["stageTwoBoost"] to stageTwoBoost@.
@@ -139,7 +141,8 @@ function stageTwoBoost {
     set phase to "Stage Three Coast".
     set stageCountdown to time:seconds.
     when time:seconds - stageCountdown >= 1 then {
-      ag5 on.
+      for fin in s2fins { fin:doevent("kaboom!"). }
+      s2decoupler:doevent("decouple").
       output("Stage two booster decoupled").
     }
     set startPitch to pitch_for(ship).
@@ -150,8 +153,8 @@ function stageTwoBoost {
 
 function stageThreeCoast {
   if startPitch - pitch_for(ship) >= pitchLimit or ship:verticalspeed < 100 {
+    lfo1:doevent("activate engine").
     output("Stage three boost started. Pitch is " + round(pitch_for(ship), 3) + ", vertical speed is " + round(ship:verticalspeed, 3) + "m/s").
-    stage.
     set phase to "Stage Three Boost".
     
     // wait a second before moving to the next state to give time for craft to accelerate and reset the maxQ

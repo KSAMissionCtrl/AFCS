@@ -27,8 +27,7 @@ function opsRun {
         set deleteOnFinish to false.
       }
       set opCode to opCode + 1.
-      output("operations execution complete").
-      output("waiting to receive operations...").
+      output("execution complete, awaiting new operations...").
     }
     
     // run any existing ops
