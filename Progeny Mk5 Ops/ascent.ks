@@ -42,7 +42,7 @@ function ongoingOps {
     logTlm(currTime - launchTime).
   }
   
-  if ship:status = "SPLASHED" or ship:status = "LANDED" {
+  if isLanded {
     operations:remove("ongoingOps").
     operations:remove("coastToLanding").
     output("flight operations concluded").
@@ -62,44 +62,54 @@ function launch {
     srb1:doevent("activate engine").
     output("launch!").
     
-    // allow a physics tick then setup some triggers, nested so only a few are running at any given time
+    // allow a physics tick for things to get updated
     wait 0.01.
-    when maxQ > ship:q then output("MaxQ: " + round(ship:Q * constant:ATMtokPa, 3) + "kPa").
-    when ship:verticalspeed <= 0 then {
-      output("Apokee achieved @ " + round(ship:altitude/1000, 3) + "km").
-      set phase to "Apokee".
-      when ship:altitude <= 4000 then {
-        chute:doevent("deploy chute").
-        output("Initial chute deploy triggered @ " + round(ship:altitude/1000, 3) + "km").
-        set phase to "initial Chute Deploy".
-        when abs(ship:verticalspeed) <= 10 then {
-          output("Full chute deployment @ " + round(ship:altitude, 3) + "m").
-          set phase to "Full Chute Deploy".
-          set operations["coastToLanding"] to coastToLanding@.
+    
+    // did the booster even fire?
+    if stageOne = "Flame-Out!" {
+      setAbort(true, "stage one booster ignition failure").
+      output("launch aborted due to " + abortMsg). 
+      operations:remove("launch").
+    } else {
+    
+      // setup some triggers, nested so only a few are running at any given time
+      when maxQ > ship:q then output("MaxQ: " + round(ship:Q * constant:ATMtokPa, 3) + "kPa").
+      when ship:verticalspeed <= 0 then {
+        output("Apokee achieved @ " + round(ship:altitude/1000, 3) + "km").
+        set phase to "Apokee".
+        when ship:altitude <= 2500 then {
+          chute:doevent("deploy chute").
+          output("Initial chute deploy triggered @ " + round(ship:altitude/1000, 3) + "km").
+          set phase to "initial Chute Deploy".
+          when abs(ship:verticalspeed) <= 10 then {
+            output("Full chute deployment @ " + round(ship:altitude, 3) + "m").
+            set phase to "Full Chute Deploy".
+            set operations["coastToLanding"] to coastToLanding@.
+          }
         }
       }
-    }
-    when ship:altitude >= 60000 then {
-      for fin in s3fins { fin:doevent("kaboom!"). }
-      output("Stage three fin shred @ " + round(ship:altitude/1000, 3) + "km").
-    }
-    when ship:apoapsis > 70000 then {
-      output("We are going to space!").
-      when ship:altitude >= 70000 then {
-        output("Space reached!").
-        when ship:altitude >= 75000 then { 
-          runScience().
-        }
-        when ship:altitude <= 70000 then output("Atmospheric interface breached").
+      when ship:altitude >= 60000 then {
+        for fin in s3fins { fin:doevent("kaboom!"). }
+        output("Stage three fin shred @ " + round(ship:altitude/1000, 3) + "km").
       }
+      when ship:apoapsis > 70000 then {
+        output("We are going to space!").
+        when ship:altitude >= 70000 then {
+          output("Space reached!").
+          when ship:altitude >= 75000 then { 
+            runScience().
+          }
+          when ship:altitude <= 70000 then output("Atmospheric interface breached").
+        }
+      }
+      
+      // handle certain things regardless of what ascent state we are in
+      set operations["ongoingOps"] to ongoingOps@.
+      
+      // wait for first stage boost to complete
+      operations:remove("launch").
+      set operations["stageOneBoost"] to stageOneBoost@.
     }
-    
-    // handle certain things regardless of what ascent state we are in
-    set operations["ongoingOps"] to ongoingOps@.
-    
-    // wait for first stage boost to complete
-    operations:remove("launch").
-    set operations["stageOneBoost"] to stageOneBoost@.
   }
 }
 
@@ -128,10 +138,20 @@ function stageOneBoost {
 function stageTwoCoast {
   if startPitch - pitch_for(ship) >= pitchLimit or ship:verticalspeed < 100 {
     srb2:doevent("activate engine").
-    output("Stage two boost started. Pitch is " + round(pitch_for(ship), 3) + ", vertical speed is " + round(ship:verticalspeed, 3) + "m/s").
-    set phase to "Stage Two Boost".
-    operations:remove("stageTwoCoast").
-    set operations["stageTwoBoost"] to stageTwoBoost@.
+    wait 0.01.
+    
+    // did we get booster activation?
+    if stageTwo = "Flame-Out!" {
+      setAbort(true, "stage two booster ignition failure").
+      output("ascent aborted due to " + abortMsg). 
+      operations:remove("stageTwoCoast").
+      set operations["coastToLanding"] to coastToLanding@.
+    } else {
+      output("Stage two boost started. Pitch is " + round(pitch_for(ship), 3) + ", vertical speed is " + round(ship:verticalspeed, 3) + "m/s").
+      set phase to "Stage Two Boost".
+      operations:remove("stageTwoCoast").
+      set operations["stageTwoBoost"] to stageTwoBoost@.
+    }
   }
 }
 
@@ -155,15 +175,25 @@ function stageThreeCoast {
   if startPitch - pitch_for(ship) >= pitchLimit or ship:verticalspeed < 100 {
     lfo1:doevent("activate engine").
     output("Stage three boost started. Pitch is " + round(pitch_for(ship), 3) + ", vertical speed is " + round(ship:verticalspeed, 3) + "m/s").
-    set phase to "Stage Three Boost".
+    wait 0.01.
     
-    // wait a second before moving to the next state to give time for craft to accelerate and reset the maxQ
-    set stageCountdown to time:seconds.
-    when time:seconds - stageCountdown >= 1 then {
-      set operations["stageThreeBoostToMaxQ"] to stageThreeBoostToMaxQ@.
-      set maxQ to ship:q.
+    // did we get booster activation?
+    if stageThree = "Flame-Out!" and throttle > 0 {
+      setAbort(true, "stage three booster ignition failure").
+      output("ascent aborted due to " + abortMsg). 
+      operations:remove("stageThreeCoast").
+      set operations["coastToLanding"] to coastToLanding@.
+    } else {
+      set phase to "Stage Three Boost".
+      
+      // wait a second before moving to the next state to give time for craft to accelerate and reset the maxQ
+      set stageCountdown to time:seconds.
+      when time:seconds - stageCountdown >= 1 then {
+        set operations["stageThreeBoostToMaxQ"] to stageThreeBoostToMaxQ@.
+        set maxQ to ship:q.
+      }
+      operations:remove("stageThreeCoast").
     }
-    operations:remove("stageThreeCoast").
   }
 }
 
@@ -180,7 +210,7 @@ function stageThreeThrottleUp {
   if throttle >= 1 {
     set throttle to 1.
     operations:remove("stageThreeThrottleUp").
-    set operations["meco"] to meco@.
+    set operations["beco"] to beco@.
   } else {
     if maxQ > ship:q set throttle to throttle + 0.001.
     if maxQ < ship:q set throttle to throttle - 0.001.
@@ -188,20 +218,22 @@ function stageThreeThrottleUp {
   }
 }
 
-function meco {
+function beco {
   if stageThree = "Flame-Out!" {
     output("Stage three boost completed").
     set phase to "Stage Three Coast".
     unlock throttle.
-    operations:remove("meco").
+    operations:remove("beco").
   }
 }
 
 function coastToLanding {
   if ship:status = "SPLASHED" {
     output("Splashdown @ " + round(abs(chuteSpeed), 3) + "m/s, " + round(circle_distance(launchPosition, ship:geoposition, ship:orbit:body:radius)/1000, 3) + "km downrange").
+    set isLanded to true.
   } else if ship:status = "LANDED" {
     output("Touchdown @ " + round(abs(chuteSpeed), 3) + "m/s, " + round(circle_distance(launchPosition, ship:geoposition, ship:orbit:body:radius)/1000, 3) + "km downrange").
+    set isLanded to true.
   } else if time:seconds - currTime >= logInterval { set chuteSpeed to ship:verticalspeed. }
 }
 

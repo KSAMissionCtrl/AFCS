@@ -1,12 +1,12 @@
 // initialize variables
 set config:stat to true.
 set abort to false.
-set landed to false.
+set isLanded to false.
 set stageCountdown to 0.
 set chuteSpeed to 0.
 set phase to "Stage One Ascent".
 set abortMsg to "undefined reasons".
-set launchTime to 34788000.
+set launchTime to 35451000.
 set maxECdrain to 2.608695652.
 set logInterval to 1.
 set pitchLimit to 1.5.
