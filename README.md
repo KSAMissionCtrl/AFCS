@@ -8,6 +8,16 @@ Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Change Log
 
+**Progeny Mk5 Block I Flight 2** (10/26/17)
+
+Operations:
+  - [ascent.ks] Logging messages moved to after command execution so any non-executed commands don't push a message to the log saying they were executed
+  - [ascent.ks] Brought back use of `isLanded` flag to signal the end of ascent execution so it cannot be determined independently of the function that actually detects landing after chute deploy
+  - [ascent.ks] All boosters now properly check to see if they have ignited properly & gracefully handle ignition failure
+  - [ascent.ks] Changed the `meco` function to `beco` as it is technically more correct
+  - [initialize.ks] Launch time updated
+  - [science.ks] Payload instrument triggers updated
+
 **Progeny Mk5 Block I Flight 1** (10/19/17)
 
 AFCS:
