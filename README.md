@@ -8,6 +8,20 @@ Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Change Log
 
+**Progeny Mk5 Block I Flight 3** (12/11/17)
+
+AFCS:
+  - [boot.ks] Now using proper `return` method to preserve a trigger
+  - [logger.ks] Allow for the addition of data logging fields on a per-launch basis
+  
+Operations:
+  - [ascent.ks] Removed code profiling
+  - [ascent.ks] Removed stage 3 fin shred, as fins are no longer on stage 3
+  - [ascent.ks] Added check for Angle of Attack constraint. If exceeded during the coast phase, program waits for controllers to manually fire off the next booster
+  - [initialize.ks] New launch time set
+  - [initialize.ks] Removed stage 3 fin part lookup
+  - [science.ks] Payload instrument triggers updated
+  
 **Progeny Mk5 Block I Flight 2** (10/26/17)
 
 Operations:
