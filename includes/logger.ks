@@ -7,6 +7,7 @@ set launchPosition to ship:geoposition.
 set lastVectorPosition to ship:geoposition:altitudeposition(ship:altitude).
 set surfaceGravity to (ship:orbit:body:mass * constant:G)/(ship:orbit:body:radius^2).
 set pathData to lexicon().
+set addlLogData to lexicon().
 set altData to list().
 set geoData to list().
 set vecData to list().
@@ -30,14 +31,11 @@ for res in resList {
 // ensure any previous data is overwritten
 if archive:exists(ship:name + ".csv") archive:delete(ship:name + ".csv").
 
-// create the CSV headers
-log "UT,MET (s),Heading,Pitch,Roll,Dynamic Pressure - Q (kPa),Mass (t),Angle of Attack,Altitude (m),Lat,Lon,Apoapsis (m),Periapsis (m),Inclination,Velocity (m/s),Thrust (kN),Gravity,Distance Downrange (m), Throttle, Electric Charge, EC/Capacity" to "0:" + ship:name + ".csv".
-
 ////////////
 // Functions
 ////////////
 
-// for logging generic data, with various considerations
+// for logging generic operational status, with various considerations
 function output {
   parameter text.
   parameter toConsole is true.
@@ -86,7 +84,22 @@ function output {
   }
 }
 
-// log the data each - whatever. Calling program will decide how often to log
+// called to create log header after any additional log parameters have been set
+function initLog {
+
+  // create the default CSV headers
+  set header to "UT,MET (s),Heading,Pitch,Roll,Dynamic Pressure - Q (kPa),Mass (t),Angle of Attack,Altitude (m),Lat,Lon,Apoapsis (m),Periapsis (m),Inclination,Velocity (m/s),Thrust (kN),Gravity,Distance Downrange (m),Throttle,Electric Charge,EC/Capacity".
+  
+  // add any additional headers?
+  if addlLogData:length {
+    for addlHeader in addlLogData:keys { set header to header + "," + addlHeader. }
+  }
+  
+  // output all the headers
+  log header to "0:" + ship:name + ".csv".
+}
+
+// log the telemetry data each - whatever. Calling program will decide how often to log
 function logTlm {
   parameter met.
   
@@ -108,27 +121,34 @@ function logTlm {
   // calculate the new gravity value
   set grav to surfaceGravity/((((ship:orbit:body:radius + ship:altitude)/1000)/(ship:orbit:body:radius/1000))^2).
   
-  // log all the data
-  log currTime + "," +
-    met + "," +
-    compass_for(ship) + "," +
-    pitch_for(ship) + "," +
-    roll_for(ship) + "," +
-    (ship:Q * constant:ATMtokPa) + "," +
-    ship:mass + "," +
-    VANG(ship:facing:vector, ship:srfprograde:vector) + "," +
-    ship:altitude + "," +
-    ship:geoposition:lat + "," +
-    ship:geoposition:lng + "," +
-    ship:orbit:apoapsis + "," +
-    ship:orbit:periapsis + "," +
-    ship:orbit:inclination + "," +
-    ship:velocity:surface:mag + "," +
-    ship:availablethrust + "," +
-    grav + "," +
-    circle_distance(launchPosition, ship:geoposition, ship:orbit:body:radius) + "," +
-    ship:control:mainthrottle + "%," +
-    round(EClvl, 2) + "," + 
-    round(100 * EClvl / fullChargeEC, 2) + "%"
-  to logVol + ship:name + ".csv".
+  // log all the default data
+  set datalog to currTime + "," +
+                 met + "," +
+                 compass_for(ship) + "," +
+                 pitch_for(ship) + "," +
+                 roll_for(ship) + "," +
+                 (ship:Q * constant:ATMtokPa) + "," +
+                 ship:mass + "," +
+                 VANG(ship:facing:vector, ship:srfprograde:vector) + "," +
+                 ship:altitude + "," +
+                 ship:geoposition:lat + "," +
+                 ship:geoposition:lng + "," +
+                 ship:orbit:apoapsis + "," +
+                 ship:orbit:periapsis + "," +
+                 ship:orbit:inclination + "," +
+                 ship:velocity:surface:mag + "," +
+                 ship:availablethrust + "," +
+                 grav + "," +
+                 circle_distance(launchPosition, ship:geoposition, ship:orbit:body:radius) + "," +
+                 ship:control:mainthrottle + "%," +
+                 round(EClvl, 2) + "," + 
+                 round(100 * EClvl / fullChargeEC, 2) + "%".
+                 
+  // add any additional data?
+  if addlLogData:length {
+    for data in addlLogData:values { set datalog to datalog + "," + dataHeader. }
+  }
+
+  // push the new data to the log
+  log datalog to logVol + ship:name + ".csv".
 }

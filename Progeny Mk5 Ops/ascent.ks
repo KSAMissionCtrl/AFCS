@@ -46,7 +46,6 @@ function ongoingOps {
     operations:remove("ongoingOps").
     operations:remove("coastToLanding").
     output("flight operations concluded").
-    log profileresult() to ship:name + "kos.csv".
   }
 }
 
@@ -60,6 +59,7 @@ function launch {
 
     // launch the rocket
     srb1:doevent("activate engine").
+    ship:partstagged("rail")[0]:getmodule("ModuleAnchoredDecoupler"):doevent("decouple").
     output("launch!").
     
     // allow a physics tick for things to get updated
@@ -87,10 +87,6 @@ function launch {
             set operations["coastToLanding"] to coastToLanding@.
           }
         }
-      }
-      when ship:altitude >= 60000 then {
-        for fin in s3fins { fin:doevent("kaboom!"). }
-        output("Stage three fin shred @ " + round(ship:altitude/1000, 3) + "km").
       }
       when ship:apoapsis > 70000 then {
         output("We are going to space!").
@@ -136,6 +132,14 @@ function stageOneBoost {
 }
 
 function stageTwoCoast {
+  
+  // check for anomalous AoA
+  if VANG(ship:facing:vector, ship:srfprograde:vector) > s2AoALimit {
+    output("Angle of Attack constraint exceeded by " + round(VANG(ship:facing:vector, ship:srfprograde:vector) - s2AoALimit, 3) + " - awaiting manual staging").
+    operations:remove("stageTwoCoast").
+    set operations["stageTwoBoostWait"] to stageTwoBoostWait@.
+  }
+  
   if startPitch - pitch_for(ship) >= pitchLimit or ship:verticalspeed < 100 {
     srb2:doevent("activate engine").
     wait 0.01.
@@ -152,6 +156,15 @@ function stageTwoCoast {
       operations:remove("stageTwoCoast").
       set operations["stageTwoBoost"] to stageTwoBoost@.
     }
+  }
+}
+
+function stageTwoBoostWait {
+  if stageTwo = "Nominal" {
+    output("Stage two boost started. Pitch is " + round(pitch_for(ship), 3) + ", vertical speed is " + round(ship:verticalspeed, 3) + "m/s").
+    set phase to "Stage Two Boost".
+    operations:remove("stageTwoBoostWait").
+    set operations["stageTwoBoost"] to stageTwoBoost@.
   }
 }
 
@@ -172,6 +185,14 @@ function stageTwoBoost {
 }
 
 function stageThreeCoast {
+  
+  // check for anomalous AoA
+  if VANG(ship:facing:vector, ship:srfprograde:vector) > s3AoALimit {
+    output("Angle of Attack constraint exceeded by " + round(VANG(ship:facing:vector, ship:srfprograde:vector) - s3AoALimit, 3) + " - awaiting manual staging").
+    operations:remove("stageThreeCoast").
+    set operations["stageThreeBoostToMaxQWait"] to stageThreeBoostToMaxQWait@.
+  }
+  
   if startPitch - pitch_for(ship) >= pitchLimit or ship:verticalspeed < 100 {
     lfo1:doevent("activate engine").
     output("Stage three boost started. Pitch is " + round(pitch_for(ship), 3) + ", vertical speed is " + round(ship:verticalspeed, 3) + "m/s").
@@ -194,6 +215,19 @@ function stageThreeCoast {
       }
       operations:remove("stageThreeCoast").
     }
+  }
+}
+
+function stageThreeBoostToMaxQWait {
+  if stageThree = "Nominal" {
+  
+    // wait a second before moving to the next state to give time for craft to accelerate and reset the maxQ
+    set stageCountdown to time:seconds.
+    when time:seconds - stageCountdown >= 1 then {
+      set operations["stageThreeBoostToMaxQ"] to stageThreeBoostToMaxQ@.
+      set maxQ to ship:q.
+    }
+    operations:remove("stageThreeBoostToMaxQWait").
   }
 }
 

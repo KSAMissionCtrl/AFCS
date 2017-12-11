@@ -52,7 +52,7 @@ on ag1 {
     set hasSignal to true. 
     output("KSC link acquired"). 
   }
-  preserve.
+  return true.
 }
 
 ////////////////////////
