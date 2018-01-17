@@ -8,6 +8,20 @@ Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Change Log
 
+**Progeny Mk5 Block I Flight 4** (1/17/18)
+
+AFCS:
+  - [logger.ks] Expanded Lat and Lon abbreviations into their full words for the log header
+  - [logger.ks] Fixed logging custom data so the data is actually logged
+  
+Operations:
+  - [ascent.ks] Now logs a final telemetry data set after splashdown occurs
+  - [ascent.ks] Stage 3 coast removed, new ascent profile will stage the booster 1s after separation
+  - [ascent.ks] Stage 3 engine will now continue to throttle up even in vacuum
+  - [initialize.ks] New launch time set
+  - [initialize.ks] Initial Stage 3 throttle changed from 2 to 2.5 TWR
+  - [initialize.ks] Custom log data added for radiation instrument to log rad/h
+
 **Progeny Mk5 Block I Flight 3** (12/11/17)
 
 AFCS:
