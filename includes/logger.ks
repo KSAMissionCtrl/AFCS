@@ -88,7 +88,7 @@ function output {
 function initLog {
 
   // create the default CSV headers
-  set header to "UT,MET (s),Heading,Pitch,Roll,Dynamic Pressure - Q (kPa),Mass (t),Angle of Attack,Altitude (m),Lat,Lon,Apoapsis (m),Periapsis (m),Inclination,Velocity (m/s),Thrust (kN),Gravity,Distance Downrange (m),Throttle,Electric Charge,EC/Capacity".
+  set header to "UT,MET (s),Heading,Pitch,Roll,Dynamic Pressure - Q (kPa),Mass (t),Angle of Attack,Altitude (m),Latitude,Longitude,Apoapsis (m),Periapsis (m),Inclination,Velocity (m/s),Thrust (kN),Gravity,Distance Downrange (m),Throttle,Electric Charge,EC/Capacity".
   
   // add any additional headers?
   if addlLogData:length {
@@ -146,7 +146,7 @@ function logTlm {
                  
   // add any additional data?
   if addlLogData:length {
-    for data in addlLogData:values { set datalog to datalog + "," + dataHeader. }
+    for data in addlLogData:values { set datalog to datalog + "," + data(). }
   }
 
   // push the new data to the log

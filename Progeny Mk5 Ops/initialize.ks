@@ -5,12 +5,11 @@ set stageCountdown to 0.
 set chuteSpeed to 0.
 set phase to "Stage One Ascent".
 set abortMsg to "undefined reasons".
-set launchTime to 39529800.
+set launchTime to 42647340.
 set maxECdrain to 2.608695652.
 set logInterval to 1.
 set pitchLimit to 1.5.
 set s2AoALimit to 0.5.
-set s3AoALimit to 1.
 set maxQ to 0.
 set currTime to floor(time:seconds).
 
@@ -44,7 +43,11 @@ function setAbort {
   set abortMsg to msg.
 }
 
-// set the throttle to an initial TWR of 2
-lock throttle to 2 * ship:mass * (surfaceGravity/((((ship:orbit:body:radius + ship:altitude)/1000)/(ship:orbit:body:radius/1000))^2)) / getAvailableThrust().
+// set the throttle to an initial TWR
+lock throttle to 2.5 * ship:mass * (surfaceGravity/((((ship:orbit:body:radius + ship:altitude)/1000)/(ship:orbit:body:radius/1000))^2)) / getAvailableThrust().
+
+// add any custom logging fields, then call for header write
+set addlLogData["Rad/h"] to { return ship:partstagged("payload1")[0]:getmodule("Sensor"):getfield("Radiation"). }.
+initLog().
 
 output("Vessel boot up").

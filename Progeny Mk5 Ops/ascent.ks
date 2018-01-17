@@ -36,16 +36,28 @@ function terminalCount {
 function ongoingOps {
   if ship:q > maxQ set maxQ to ship:q.
   
-  // log data every defined interval
-  if time:seconds - currTime >= logInterval {
-    set currTime to floor(time:seconds).
-    logTlm(currTime - launchTime).
-  }
-  
   if isLanded {
     operations:remove("ongoingOps").
     operations:remove("coastToLanding").
     output("flight operations concluded").
+    
+    // output one final log entry
+    if time:seconds - currTime >= logInterval {
+      set currTime to floor(time:seconds).
+      logTlm(currTime - launchTime).
+    } else {
+      when time:seconds - currTime >= logInterval then {
+        set currTime to floor(time:seconds).
+        logTlm(currTime - launchTime).
+      }
+    }
+  } else {
+  
+    // log data every defined interval
+    if time:seconds - currTime >= logInterval {
+      set currTime to floor(time:seconds).
+      logTlm(currTime - launchTime).
+    }
   }
 }
 
@@ -170,64 +182,44 @@ function stageTwoBoostWait {
 
 function stageTwoBoost {
   if stageTwo = "Flame-Out!" {
-    output("Stage two boost completed, standing by to decouple. Pitch is " + round(pitch_for(ship), 3)).
-    set phase to "Stage Three Coast".
+    output("Stage two boost completed, standing by to decouple").
+    set phase to "Stage Three Boost".
     set stageCountdown to time:seconds.
     when time:seconds - stageCountdown >= 1 then {
       for fin in s2fins { fin:doevent("kaboom!"). }
       s2decoupler:doevent("decouple").
       output("Stage two booster decoupled").
     }
-    set startPitch to pitch_for(ship).
     operations:remove("stageTwoBoost").
-    set operations["stageThreeCoast"] to stageThreeCoast@.
-  }
-}
-
-function stageThreeCoast {
-  
-  // check for anomalous AoA
-  if VANG(ship:facing:vector, ship:srfprograde:vector) > s3AoALimit {
-    output("Angle of Attack constraint exceeded by " + round(VANG(ship:facing:vector, ship:srfprograde:vector) - s3AoALimit, 3) + " - awaiting manual staging").
-    operations:remove("stageThreeCoast").
-    set operations["stageThreeBoostToMaxQWait"] to stageThreeBoostToMaxQWait@.
-  }
-  
-  if startPitch - pitch_for(ship) >= pitchLimit or ship:verticalspeed < 100 {
-    lfo1:doevent("activate engine").
-    output("Stage three boost started. Pitch is " + round(pitch_for(ship), 3) + ", vertical speed is " + round(ship:verticalspeed, 3) + "m/s").
-    wait 0.01.
     
-    // did we get booster activation?
-    if stageThree = "Flame-Out!" and throttle > 0 {
-      setAbort(true, "stage three booster ignition failure").
-      output("ascent aborted due to " + abortMsg). 
-      operations:remove("stageThreeCoast").
-      set operations["coastToLanding"] to coastToLanding@.
-    } else {
-      set phase to "Stage Three Boost".
-      
-      // wait a second before moving to the next state to give time for craft to accelerate and reset the maxQ
-      set stageCountdown to time:seconds.
-      when time:seconds - stageCountdown >= 1 then {
-        set operations["stageThreeBoostToMaxQ"] to stageThreeBoostToMaxQ@.
-        set maxQ to ship:q.
-      }
-      operations:remove("stageThreeCoast").
+    // it will take a second to stage, wait a second longer to boost
+    when time:seconds - stageCountdown >= 2 then {
+      set operations["stageThreeBoost"] to stageThreeBoost@.
     }
   }
 }
 
-function stageThreeBoostToMaxQWait {
-  if stageThree = "Nominal" {
+function stageThreeBoost {
+  lfo1:doevent("activate engine").
+  output("Stage three boost started").
+  wait 0.01.
   
+  // did we get booster activation?
+  if stageThree = "Flame-Out!" and throttle > 0 {
+    setAbort(true, "stage three booster ignition failure").
+    output("ascent aborted due to " + abortMsg). 
+    operations:remove("stageThreeBoost").
+    set operations["coastToLanding"] to coastToLanding@.
+  } else {
+    set phase to "Stage Three Boost".
+    
     // wait a second before moving to the next state to give time for craft to accelerate and reset the maxQ
     set stageCountdown to time:seconds.
     when time:seconds - stageCountdown >= 1 then {
       set operations["stageThreeBoostToMaxQ"] to stageThreeBoostToMaxQ@.
       set maxQ to ship:q.
     }
-    operations:remove("stageThreeBoostToMaxQWait").
+    operations:remove("stageThreeBoost").
   }
 }
 
@@ -246,7 +238,7 @@ function stageThreeThrottleUp {
     operations:remove("stageThreeThrottleUp").
     set operations["beco"] to beco@.
   } else {
-    if maxQ > ship:q set throttle to throttle + 0.001.
+    if maxQ > ship:q or ship:q = 0 set throttle to throttle + 0.001.
     if maxQ < ship:q set throttle to throttle - 0.001.
     set maxQ to ship:q.
   }
