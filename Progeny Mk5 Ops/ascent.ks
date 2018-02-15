@@ -86,28 +86,34 @@ function launch {
     
       // setup some triggers, nested so only a few are running at any given time
       when maxQ > ship:q then output("MaxQ: " + round(ship:Q * constant:ATMtokPa, 3) + "kPa").
-      when ship:verticalspeed <= 0 then {
-        output("Apokee achieved @ " + round(ship:altitude/1000, 3) + "km").
-        set phase to "Apokee".
-        when ship:altitude <= 2500 then {
-          chute:doevent("deploy chute").
-          output("Initial chute deploy triggered @ " + round(ship:altitude/1000, 3) + "km").
-          set phase to "initial Chute Deploy".
-          when abs(ship:verticalspeed) <= 10 then {
-            output("Full chute deployment @ " + round(ship:altitude, 3) + "m").
-            set phase to "Full Chute Deploy".
-            set operations["coastToLanding"] to coastToLanding@.
-          }
-        }
-      }
       when ship:apoapsis > 70000 then {
         output("We are going to space!").
         when ship:altitude >= 70000 then {
           output("Space reached!").
           when ship:altitude >= 75000 then { 
             runScience().
+            when ship:altitude >= 250000 then { runScience(). }
           }
-          when ship:altitude <= 70000 then output("Atmospheric interface breached").
+        }
+      }
+      when ship:verticalspeed <= 0 then {
+        output("Apokee achieved @ " + round(ship:altitude/1000, 3) + "km").
+        set phase to "Apokee".
+        when ship:altitude <= 70000 then {
+          output("Atmospheric interface breached").
+          when ship:altitude <= 6000 then {
+            for fairing in fairings { fairing:doevent("decouple"). }
+            when ship:altitude <= 1500 then {
+              chute:doevent("deploy chute").
+              output("Initial chute deploy triggered @ " + round(ship:altitude/1000, 3) + "km").
+              set phase to "initial Chute Deploy".
+              when abs(ship:verticalspeed) <= 10 then {
+                output("Full chute deployment @ " + round(ship:altitude, 3) + "m").
+                set phase to "Full Chute Deploy".
+                set operations["coastToLanding"] to coastToLanding@.
+              }
+            }
+          }
         }
       }
       
@@ -212,35 +218,8 @@ function stageThreeBoost {
     set operations["coastToLanding"] to coastToLanding@.
   } else {
     set phase to "Stage Three Boost".
-    
-    // wait a second before moving to the next state to give time for craft to accelerate and reset the maxQ
-    set stageCountdown to time:seconds.
-    when time:seconds - stageCountdown >= 1 then {
-      set operations["stageThreeBoostToMaxQ"] to stageThreeBoostToMaxQ@.
-      set maxQ to ship:q.
-    }
     operations:remove("stageThreeBoost").
-  }
-}
-
-function stageThreeBoostToMaxQ {
-  if maxQ > ship:q {
-    output("Go for throttle up @ " + round(maxQ * constant:ATMtokPa, 3) + "kPa and falling, " + round(ship:altitude/1000, 3) + "km").
-    operations:remove("stageThreeBoostToMaxQ").
-    set operations["stageThreeThrottleUp"] to stageThreeThrottleUp@.
-    set maxQ to ship:q.
-  }
-}
-
-function stageThreeThrottleUp {
-  if throttle >= 1 {
-    set throttle to 1.
-    operations:remove("stageThreeThrottleUp").
     set operations["beco"] to beco@.
-  } else {
-    if maxQ > ship:q or ship:q = 0 set throttle to throttle + 0.001.
-    if maxQ < ship:q set throttle to throttle - 0.001.
-    set maxQ to ship:q.
   }
 }
 

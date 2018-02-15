@@ -28,9 +28,6 @@ for res in resList {
   } 
 }
 
-// ensure any previous data is overwritten
-if archive:exists(ship:name + ".csv") archive:delete(ship:name + ".csv").
-
 ////////////
 // Functions
 ////////////

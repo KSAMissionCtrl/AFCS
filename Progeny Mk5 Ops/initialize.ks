@@ -5,7 +5,7 @@ set stageCountdown to 0.
 set chuteSpeed to 0.
 set phase to "Stage One Ascent".
 set abortMsg to "undefined reasons".
-set launchTime to 42647340.
+set launchTime to 44985660.
 set maxECdrain to 2.608695652.
 set logInterval to 1.
 set pitchLimit to 1.5.
@@ -35,6 +35,12 @@ set s2fins to list(
 ).
 set lfo1 to ship:partstagged("lfo1")[0]:getmodule("ModuleEnginesFX").
 set chute to ship:partstagged("chute")[0]:getmodule("RealChuteModule").
+set fairings to list(
+  ship:partstagged("fairing")[0]:getmodule("ModuleAnimatedDecoupler"),
+  ship:partstagged("fairing")[1]:getmodule("ModuleAnimatedDecoupler"),
+  ship:partstagged("fairing")[2]:getmodule("ModuleAnimatedDecoupler"),
+  ship:partstagged("fairing")[3]:getmodule("ModuleAnimatedDecoupler")
+).
 
 // keep track of abort state
 function setAbort {
@@ -44,7 +50,9 @@ function setAbort {
 }
 
 // set the throttle to an initial TWR
-lock throttle to 2.5 * ship:mass * (surfaceGravity/((((ship:orbit:body:radius + ship:altitude)/1000)/(ship:orbit:body:radius/1000))^2)) / getAvailableThrust().
+// not currently needed
+// lock throttle to 2.5 * ship:mass * (surfaceGravity/((((ship:orbit:body:radius + ship:altitude)/1000)/(ship:orbit:body:radius/1000))^2)) / getAvailableThrust().
+lock throttle to 1.
 
 // add any custom logging fields, then call for header write
 set addlLogData["Rad/h"] to { return ship:partstagged("payload1")[0]:getmodule("Sensor"):getfield("Radiation"). }.
