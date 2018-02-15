@@ -8,6 +8,19 @@ Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Change Log
 
+**Progeny Mk6 Block I Flight 1** (2/15/18)
+
+AFCS:
+  - [logger.ks] Any previous log data is no longer destroyed when the logger is initialized
+  
+Operations:
+  - [ascent.ks] Reordered and renested some triggers for events now that space is guaranteed without a breakup
+  - [ascent.ks] New trigger for fairing deploy in the lower atmosphere
+  - [ascent.ks] Stage 3 dynamic pressure check and throttle up removed
+  - [initialize.ks] New launch time set
+  - [initialize.ks] Initial Stage 3 throttle changed to full thrust
+  - [initialize.ks] Fairing parts found for later detachment command
+
 **Progeny Mk5 Block I Flight 4** (1/17/18)
 
 AFCS:
