@@ -8,6 +8,15 @@ Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Change Log
 
+**Progeny Mk6 Block I Flight 2** (4/26/18)
+
+Operations:
+  - [ascent.ks] Added triggers in the descent phase to gradually deploy air brakes
+  - [initialize.ks] New launch time set
+  - [initialize.ks] Radiation data log now outputs in number format when rads/h are above 0.001
+  - [initialize.ks] Parts are found for air brake usage
+  - [science.ks] Second payload instrument operations commented out, only one instrument aboard
+
 **Progeny Mk6 Block I Flight 1** (2/15/18)
 
 AFCS:
