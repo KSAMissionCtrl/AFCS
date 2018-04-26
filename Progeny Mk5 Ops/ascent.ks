@@ -103,7 +103,19 @@ function launch {
           output("Atmospheric interface breached").
           when ship:altitude <= 6000 then {
             for fairing in fairings { fairing:doevent("decouple"). }
-            when ship:altitude <= 1500 then {
+
+            // gradually deploy airbrakes to ensure their deployment mechanisms aren't overcome by pressure
+            for airbrake in airbrakes { airbrake:setfield("deploy", true). } 
+            when ship:altitude <= 5000 then {
+              for airbrake in airbrakes { airbrake:setfield("authority limiter", 50). }
+              when ship:altitude <= 4000 then {
+                for airbrake in airbrakes { airbrake:setfield("authority limiter", 75). }
+                when ship:altitude <= 2500 then {
+                  for airbrake in airbrakes { airbrake:setfield("authority limiter", 100). }
+                }
+              }
+            }
+            when ship:altitude <= 1800 then {
               chute:doevent("deploy chute").
               output("Initial chute deploy triggered @ " + round(ship:altitude/1000, 3) + "km").
               set phase to "initial Chute Deploy".
