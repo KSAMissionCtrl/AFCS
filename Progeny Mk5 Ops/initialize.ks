@@ -5,7 +5,7 @@ set stageCountdown to 0.
 set chuteSpeed to 0.
 set phase to "Stage One Ascent".
 set abortMsg to "undefined reasons".
-set launchTime to 51026280.
+set launchTime to 51545880.
 set maxECdrain to 2.608695652.
 set logInterval to 1.
 set pitchLimit to 1.5.
