@@ -8,6 +8,12 @@ Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Change Log
 
+**Progeny Mk6 Block I Flight 3** (5/2/18)
+
+Operations:
+  - [initialize.ks] New launch time set
+  - [science.ks] Second payload instrument operations re-enabled
+  
 **Progeny Mk6 Block I Flight 2** (4/26/18)
 
 Operations:
