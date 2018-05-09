@@ -102,7 +102,6 @@ function launch {
         when ship:altitude <= 70000 then {
           output("Atmospheric interface breached").
           when ship:altitude <= 6000 then {
-            for fairing in fairings { fairing:doevent("decouple"). }
 
             // gradually deploy airbrakes to ensure their deployment mechanisms aren't overcome by pressure
             for airbrake in airbrakes { airbrake:setfield("deploy", true). } 
