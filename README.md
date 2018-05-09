@@ -8,6 +8,12 @@ Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Change Log
 
+**Progeny Mk6 Block I Flight 4** (5/8/18)
+
+Operations:
+  - [initialize.ks] New launch time set
+  - [ascent.ks] Removed code that detached fairing peices after re-entry
+  
 **Progeny Mk6 Block I Flight 3** (5/2/18)
 
 Operations:
