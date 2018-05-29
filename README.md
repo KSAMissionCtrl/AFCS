@@ -8,6 +8,14 @@ Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Change Log
 
+**Progeny Mk6 Block I Flight 5** (5/28/18)
+
+AFCS:
+  - New folder structure for operations files
+  
+Operations: 
+  - [initialize.ks] New launch time set
+
 **Progeny Mk6 Block I Flight 4** (5/8/18)
 
 Operations:
