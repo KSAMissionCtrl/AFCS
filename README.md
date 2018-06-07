@@ -8,6 +8,17 @@ Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Change Log
 
+**Ascension Mk1 Block I Flight 1** (6/8/18)
+
+AFCS:
+  - [boot.ks] Reduced log output for instruction loads to a single line that shows the time taken to execute
+  - [helpFunc.ks] `surfaceGravity` is now a global variable that can be used anywhere
+  - [helpFunc.ks] `setAbort()` is now a global function that can be used anywhere
+  - [helpFunc.ks] `setAbort()` now also outputs the reason for the abort so a separate command for this is no longer needed
+  
+Operations: 
+  - All new code to initialize then handle ascent, orbit and recovery for the Ascension Mk1 Block I rocket
+  
 **Progeny Mk6 Block I Flight 5** (5/28/18)
 
 AFCS:
