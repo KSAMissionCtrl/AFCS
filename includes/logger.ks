@@ -5,7 +5,6 @@
 set loggingAllowed to true.
 set launchPosition to ship:geoposition.
 set lastVectorPosition to ship:geoposition:altitudeposition(ship:altitude).
-set surfaceGravity to (ship:orbit:body:mass * constant:G)/(ship:orbit:body:radius^2).
 set pathData to lexicon().
 set addlLogData to lexicon().
 set altData to list().

@@ -1,7 +1,17 @@
+// easier to remember
+set surfaceGravity to (ship:orbit:body:mass * constant:G)/(ship:orbit:body:radius^2).
+
 // ensures that you can't divide by 0
 function getAvailableThrust {
   if ship:availablethrust > 0 return ship:availablethrust.
   if ship:availablethrust = 0 return 0.000000000000000001.
+}
+
+// keep track of abort state
+function setAbort {
+  parameter doAbort, msg is "undefined reasons".
+  set abort to doAbort.
+  output("Launch abort thrown: " + msg).
 }
 
 // from the KSLib

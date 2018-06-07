@@ -18,7 +18,7 @@ function opsRun {
     
     // check if a new ops file is waiting to be executed
     if hasSignal and archive:exists(ship:name + ".ops.ks") {
-      output("operations received, executing").
+      set opTime to time:seconds.
       copypath("0:" + ship:name + ".ops.ks", "/ops/operations" + opCode + ".ks").
       archive:delete(ship:name + ".ops.ks").
       runpath("/ops/operations" + opCode + ".ks").
@@ -27,7 +27,7 @@ function opsRun {
         set deleteOnFinish to false.
       }
       set opCode to opCode + 1.
-      output("execution complete, awaiting new operations...").
+      output("Instruction onload complete (" + round(time:seconds - opTime,2) + "ms)").
     }
     
     // run any existing ops
