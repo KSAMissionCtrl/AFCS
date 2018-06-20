@@ -8,6 +8,15 @@ Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Change Log
 
+**Progeny Mk6 Block II Flight 1** (6/20/18)
+
+Operations:
+  - [ascent.ks] Operations sequence changed to match what was done for Ascension launch
+  - [ascent.ks] Extra stage added to handle release of radial boosters
+  - [ascent.ks] Cutoff added to ensure rocket doesn't fly beyond 900km apokee
+  - [ascent.ks] Ensures chute will not open if rocket is traveling too fast - unless its so low an attempt might as well be made
+  - [initialize.ks] Added support for the new radial boosters
+
 **Ascension Mk1 Block I Flight 1** (6/8/18)
 
 AFCS:
