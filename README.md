@@ -8,6 +8,16 @@ Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Change Log
 
+**Ascension Mk1 Block I Flight 2** (7/17/18)
+
+Operations:
+- [ascent.ks] Generic pitch-over code removed and replaced with a quadratic fit curve to hit certain angles of pitch by certain altitudes for a more aggressive ascent profile
+- [ascent.ks] Apokee hold removed, as to do this rocket would need to be able to continually adjust orientation during burn and it will lose this ability due to thinning air long before fuel expires
+- [initialize.ks] Launch time updated
+- [orbit.ks] Better detection for sub-orbital trajectory to kick in return routines
+- [orbit.ks] Fixed bug that prevented chute deployment last flight
+- [orbit.ks] Use of control surfaces to pitch level now kicks in at 35km denser air instead of 50km
+
 **Progeny Mk6 Block II Flight 1** (6/20/18)
 
 Operations:
@@ -16,6 +26,7 @@ Operations:
   - [ascent.ks] Cutoff added to ensure rocket doesn't fly beyond 900km apokee
   - [ascent.ks] Ensures chute will not open if rocket is traveling too fast - unless its so low an attempt might as well be made
   - [initialize.ks] Added support for the new radial boosters
+  - [initialize.ks] Launch time updated
 
 **Ascension Mk1 Block I Flight 1** (6/8/18)
 
@@ -27,6 +38,7 @@ AFCS:
   
 Operations: 
   - All new code to initialize then handle ascent, orbit and recovery for the Ascension Mk1 Block I rocket
+  - [initialize.ks] Launch time updated
   
 **Progeny Mk6 Block I Flight 5** (5/28/18)
 
