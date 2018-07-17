@@ -17,15 +17,16 @@ function aerobrake {
   when ship:verticalspeed >= 0 then output("Perikee achieved @ " + round(ship:altitude/1000, 3) + "km").
 
   // keep an eye on the apoapsis to see if we are returning
-  if ship:orbit:apoapsis < 70000 {
+  // a negative perikee means we never reached orbit to begin with
+  if ship:orbit:apoapsis < 70000 or ship:orbit:periapsis < 0 {
     output("Return to Kerbin imminent").
     operations:remove("aerobrake").
     set phase to "Re-Entry".
-    when ship:altitude <= 50000 then {
+    when ship:altitude <= 35000 then {
       set operations["reentry"] to reentry@.
 
       // we should now be low enough for our control surfaces to work
-      // hold whatever heading we are at and attempt to pitch to level
+      // hold whatever heading we are at and attempt to pitch level
       set hdgHold to compass_for(ship).
       set pitch to 0.
       lock steering to heading(hdgHold,pitch).
@@ -34,7 +35,7 @@ function aerobrake {
       // prepare for chute deployment
       // altitude is AGL
       when alt:radar <= 2000 then {
-        for chute in parachute { chute:doevent("deploy chute"). } 
+        for chute in parachutes { chute:doevent("deploy chute"). } 
         output("Initial chute deploy triggered @ " + round(ship:altitude/1000, 3) + "km").
         set phase to "initial Chute Deploy".
         unlock steering.

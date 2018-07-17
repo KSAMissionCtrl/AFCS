@@ -2,7 +2,7 @@
 set abort to false.
 set chuteSpeed to 0.
 set phase to "Initial Ascent".
-set launchTime to 54752820.
+set launchTime to 58105560.
 set maxECdrain to 1.
 set currThrottle to 1.
 set logInterval to 1.

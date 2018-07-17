@@ -85,6 +85,9 @@ function launch {
       when alt:radar >= launchHeight + 8.1 then {
 
         // enable guidance
+        // pitch over steering taken from https://www.youtube.com/watch?v=NzlM6YZ9g4w
+        // http://www.wolframalpha.com/input/?i=quadratic+fit((0,89),+(10000,60),+(20000,45),+(35000,15))
+        lock pitch to 1.48139E-8 * alt:radar^2 - 0.00257865 * alt:radar + 87.7645.
         lock steering to heading(hdgHold,pitch).
         set waitTime to floor(time:seconds).
 
@@ -112,13 +115,6 @@ function ascentToMaxQ {
   // do some events once per second instead of once per tick
   if time:seconds - waitTime > 1 {
     set waitTime to floor(time:seconds).
-
-    // do a slight pitch over to keep control surfaces within aerodynamic limits
-    // do not exceed 45 degrees of pitch and angle greater than 5 degrees off the velocity vector
-    if pitch > 45 and vang(ship:srfprograde:vector, ship:facing:forevector) < 5 {
-      set pitch to pitch - 0.25.
-      if pitch < 45 set pitch to 45.
-    }
 
     // if we've passed through dangerous pressure levels, throttle back continuously
     // do not throttle back past 10% cutoff
@@ -151,63 +147,19 @@ function ascentToMaxQ {
 
 function ascentToMeco {
 
-  // do some events once per second instead of once per tick
-  if time:seconds - waitTime > 1 {
-    set waitTime to floor(time:seconds).
-
-    // now that we are past max Q, do a more aggressive pitch change
-    // do not pitch over more than 0 degrees and angle greater than 10 degrees off the velocity vector
-    if pitch > 0 and vang(ship:srfprograde:vector, ship:facing:forevector) < 10 {
-      set pitch to pitch - 0.75.
-      if pitch < 0 set pitch to 0.
-    }
-  }
-
-  // let's not go much higher than 100km
-  if ship:orbit:apoapsis > 100000 {
-    output("Ap exceeds 100km, switching to hold").
-    operations:remove("ascentToMeco").
-
-    // if we haven't flattened out yet, then do so and wait for it otherwise jump straight to Ap hold
-    if pitch < 1 {
-      set operations["ascentToMecoApHold"] to ascentToMecoApHold@.
-    } else {
-      set pitch to 0.
-      when pitch_for(ship) < 1 then {
-        set operations["ascentToMecoApHold"] to ascentToMecoApHold@.
-      }
-    }
-  }
-
   // cut off the engine with Pe still in the atmosphere so the rocket eventually returns
   // align to prograde vector to reduce whatever drag remains during climb out of atmosphere
-  if ship:orbit:periapsis > 50000 meco("ascentToMeco").
+  if ship:orbit:periapsis > 50000 meco("MECO").
 
   // did we run out of fuel before attaining orbit?
-  if engineStatus = "Flame-Out!" meco("ascentToMecoApHold", "Flameout").
-}
-
-function ascentToMecoApHold {
-  
-  // keep adjusting the pitch as needed to stay close to 100km Ap
-  if vang(ship:srfprograde:vector, ship:facing:forevector) < 10 {
-    if ship:orbit:apoapsis > 100000 set pitch to pitch - 0.1.
-    if ship:orbit:apoapsis < 100000 set pitch to pitch + 0.1.
-  }
-
-  // cut off the engine with Pe still in the atmosphere so the rocket eventually returns
-  // align to prograde vector to reduce whatever drag remains during climb out of atmosphere
-  if ship:orbit:periapsis > 50000 meco("ascentToMecoApHold", "MECO").
-
-  // did we run out of fuel before attaining orbit?
-  if engineStatus = "Flame-Out!" meco("ascentToMecoApHold", "Flameout").
+  if engineStatus = "Flame-Out!" meco("Flameout").
 }
 
 function meco {
-  parameter func, situation.
+  parameter situation.
   output(situation + " with periapsis of " + round(ship:orbit:periapsis/1000, 3) + "km").
   lock steering to ship:srfprograde:vector.
-  operations:remove(func).
+  operations:remove("ascentToMeco").
   set operations["toAp"] to toAp@.
   set phase to "Orbit " + obtNum.
 }
