@@ -8,6 +8,18 @@ Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Change Log
 
+**Progeny Mk6 Block I Flight 6** (7/20/18)
+
+AFCS:
+  - New folder structure for Progeny operations files, as Block I and II have separate needs, except in payload control
+  
+Operations:
+  - [ascent.ks] Overall structure adjusted to fit with recent improvements made to runtime operations for Ascension Mk1 and Progeny Mk6 Block II launches
+  - [ascent.ks] Airbrakes now deploy based on dynamic pressure rather than altitude
+  - [ascent.ks] Parachute now deploys based on speed as well as altitude
+  - [initialize.ks] Overall structure adjusted to fit with recent improvements made to runtime operations for Ascension Mk1 and Progeny Mk6 Block II launches
+  - [initialize.ks] New launch time set
+
 **Ascension Mk1 Block I Flight 2** (7/17/18)
 
 Operations:
