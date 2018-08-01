@@ -73,3 +73,10 @@ function roll_for {
     }
   }
 }
+
+// https://www.reddit.com/r/Kos/comments/90okvr/looking_for_aoa_relative_to_the_craft/
+FUNCTION vertical_aoa {
+  LOCAL srfVel IS VXCL(SHIP:FACING:STARVECTOR,SHIP:VELOCITY:SURFACE). //surface velocity excluding any yaw component 
+  RETURN VANG(SHIP:FACING:FOREVECTOR,srfVel).
+}
+LOCK roll TO ARCTAN2(-VDOT(FACING:STARVECTOR, UP:FOREVECTOR), VDOT(FACING:TOPVECTOR, UP:FOREVECTOR)).

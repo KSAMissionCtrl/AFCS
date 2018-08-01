@@ -84,7 +84,7 @@ function output {
 function initLog {
 
   // create the default CSV headers
-  set header to "UT,MET (s),Heading,Pitch,Roll,Dynamic Pressure - Q (kPa),Mass (t),Angle of Attack,Altitude (m),Latitude,Longitude,Apoapsis (m),Periapsis (m),Inclination,Velocity (m/s),Thrust (kN),Gravity,Distance Downrange (m),Throttle,Electric Charge,EC/Capacity".
+  set header to "UT,MET (s),Heading,Pitch,Roll,Dynamic Pressure - Q (kPa),Mass (t),Angle of Attack,AoA Test,Altitude (m),Latitude,Longitude,Apoapsis (m),Periapsis (m),Inclination,Velocity (m/s),Current Thrust (kN),Available Thrust (kN),Gravity,Distance Downrange (m),Throttle,Electric Charge,EC/Capacity".
   
   // add any additional headers?
   if addlLogData:length {
@@ -116,6 +116,23 @@ function logTlm {
   
   // calculate the new gravity value
   set grav to surfaceGravity/((((ship:orbit:body:radius + ship:altitude)/1000)/(ship:orbit:body:radius/1000))^2).
+
+  // get the sum of all current thrust on engines
+  set currentThrust to 0.
+  list engines in engList.
+  for eng in engList { set currentThrust to currentThrust + eng:thrust. }
+
+  // https://www.reddit.com/r/Kos/comments/90okvr/looking_for_aoa_relative_to_the_craft/
+  Set RollFactor to -1.
+  If roll < 90 {
+    if roll > -90 {
+      set RollFactor to 1.
+    }
+  }
+  If Ship:Airspeed < 1 {
+    Set RollFactor to 0.
+  }
+  Set NEW_vertical_AOA to vertical_aoa()*RollFactor.
   
   // log all the default data
   set datalog to currTime + "," +
@@ -126,6 +143,7 @@ function logTlm {
                  (ship:Q * constant:ATMtokPa) + "," +
                  ship:mass + "," +
                  VANG(ship:facing:vector, ship:srfprograde:vector) + "," +
+                 NEW_vertical_AOA + "," +
                  ship:altitude + "," +
                  ship:geoposition:lat + "," +
                  ship:geoposition:lng + "," +
@@ -134,6 +152,7 @@ function logTlm {
                  ship:orbit:inclination + "," +
                  ship:velocity:surface:mag + "," +
                  ship:availablethrust + "," +
+                 currentThrust + "," +
                  grav + "," +
                  circle_distance(launchPosition, ship:geoposition, ship:orbit:body:radius) + "," +
                  ship:control:mainthrottle + "%," +

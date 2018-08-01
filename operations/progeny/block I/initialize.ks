@@ -5,7 +5,7 @@ set stageCountdown to 0.
 set chuteSafeSpeed to 490.
 set chuteSpeed to 0.
 set phase to "Stage One Ascent".
-set launchTime to 58380660.
+set launchTime to 59340240.
 set maxECdrain to 1.
 set logInterval to 1.
 set pitchLimit to 1.5.
@@ -35,12 +35,6 @@ set s2fins to list(
 ).
 set lfo1 to ship:partstagged("lfo1")[0]:getmodule("ModuleEnginesFX").
 set chute to ship:partstagged("chute")[0]:getmodule("RealChuteModule").
-set fairings to list(
-  ship:partstagged("fairing")[0]:getmodule("ModuleAnimatedDecoupler"),
-  ship:partstagged("fairing")[1]:getmodule("ModuleAnimatedDecoupler"),
-  ship:partstagged("fairing")[2]:getmodule("ModuleAnimatedDecoupler"),
-  ship:partstagged("fairing")[3]:getmodule("ModuleAnimatedDecoupler")
-).
 set airbrakes to list(
   ship:partstagged("airbrake")[0]:getmodule("ModuleAeroSurface"),
   ship:partstagged("airbrake")[1]:getmodule("ModuleAeroSurface"),
@@ -81,17 +75,7 @@ function ongoingOps {
 // lock throttle to 2.5 * ship:mass * (surfaceGravity/((((ship:orbit:body:radius + ship:altitude)/1000)/(ship:orbit:body:radius/1000))^2)) / getAvailableThrust().
 lock throttle to 1.
 
-// output the radiation levels in text or as number
-function logRad {
-  set radlvl to ship:partstagged("payload1")[0]:getmodule("Sensor"):getfield("Radiation").
-  if radlvl <> "nominal" {
-    set radlvl to radlvl:split(" ")[0].
-  }
-  return radlvl.
-}
-
 // add any custom logging fields, then call for header write
-set addlLogData["Rad/hr"] to logRad@.
 initLog().
 
 output("Vessel boot up").

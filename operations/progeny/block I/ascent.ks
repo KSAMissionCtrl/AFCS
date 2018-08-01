@@ -36,10 +36,9 @@ function launch {
         output("We are going to space!").
         when ship:altitude >= 70000 then {
           output("Space reached!").
-          // when ship:altitude >= 75000 then { 
-          //   runScience().
-          //   when ship:altitude >= 250000 then { runScience(). }
-          // }
+          when ship:altitude >= 75000 then { 
+            runScience().
+          }
         }
       }
       when ship:verticalspeed <= 0 then {
@@ -187,9 +186,9 @@ function chuteDeploy {
     when abs(ship:verticalspeed) <= 10 then {
       output("Full chute deployment @ " + round(ship:altitude, 3) + "m").
       set phase to "Full Chute Deploy".
-      operations:remove("chuteDeploy").
       set operations["coastToLanding"] to coastToLanding@.
     }
+    operations:remove("chuteDeploy").
   }
 }
 
