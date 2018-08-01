@@ -8,6 +8,21 @@ Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Change Log
 
+**Progeny Mk6 Block I Flight 7** (7/31/18)
+
+AFCS:
+  - [helpFunc.ks] New function for calculating AoA that takes into account the roll and yaw of the vessel
+  - [logger.ks] New AoA output next to old one to see what the difference is and judge its future use
+  - [logger.ks] Thrust for the vessel is now logged as both current (dependent on the throttle setting) and available (the maximum amount for the given altitude)
+  
+Operations:
+  - [ascent.ks] Science call trigger placed back in
+  - [ascent.ks] Chute deployment monitoring function now removes itself properly from the operations queue after chute deployment so it doesn't crash the program
+  - [initialize.ks] New launch time set
+  - [initialize.ks] Fairing part finders removed, as they are no longer detached during re-entry
+  - [initialize.ks] Radiation logging removed as no sensor for it aboard this rocket
+  - [science.ks] Operations for observation of the mystery goo canisters
+
 **Progeny Mk6 Block I Flight 6** (7/20/18)
 
 AFCS:
