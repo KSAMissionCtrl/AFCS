@@ -2,7 +2,6 @@
 // Initilaization
 //////////////////
 
-set loggingAllowed to true.
 set launchPosition to ship:geoposition.
 set lastVectorPosition to ship:geoposition:altitudeposition(ship:altitude).
 set pathData to lexicon().
@@ -31,7 +30,7 @@ for res in resList {
 // Functions
 ////////////
 
-// for logging generic operational status, with various considerations
+// for logging generic operational status
 function output {
   parameter text.
   parameter toConsole is true.
@@ -49,35 +48,8 @@ function output {
   if seconds < 10 set seconds to "0" + seconds.
   if mseconds < 10 set mseconds to "0" + mseconds.
   
-  // log the new data to the file if it will fit
-  // otherwise delete the log to start anew
-  set logStr to "[" + hours + ":" + minutes + ":" + seconds + "." + mseconds + "] " + text.
-  if core:volume:freespace > logStr:length {
-    log logStr to ship:name + ".log.np2".
-  } else {
-    core:volume:delete(ship:name + ".log.np2").
-    log "[" + time:calendar + "] new file" to ship:name + ".log.np2".
-    log logStr to ship:name + ".log.np2".
-  }
-
-  // store a copy on KSC hard drives if we are in contact
-  // otherwise save and copy over as soon as we are back in contact
-  if hasSignal {
-    if not archive:exists(ship:name + ".log.np2") archive:create(ship:name + ".log.np2").
-    if logList:length {
-      for entry in logList archive:open(ship:name + ".log.np2"):writeln(entry).
-      set logList to list().
-    }
-    archive:open(ship:name + ".log.np2"):writeln(logStr).
-  } else {
-    if core:volume:freespace > logStr:length {
-      logList:add(logStr).
-    } else {
-      core:volume:delete(ship:name + ".log.np2").
-      logList:add("[" + time:calendar + "] new file").
-      logList:add(logStr).
-    }
-  }
+  // log the new data
+  stashmit("[" + hours + ":" + minutes + ":" + seconds + "." + mseconds + "] " + text).
 }
 
 // called to create log header after any additional log parameters have been set
@@ -92,27 +64,19 @@ function initLog {
   }
   
   // output all the headers
-  log header to "0:" + ship:name + ".csv".
+  stashmit(header, ship:name + ".csv").
 }
 
 // log the telemetry data each - whatever. Calling program will decide how often to log
 function logTlm {
   parameter met.
   
-  // if free space has fallen below a certain limit, cease logging
-  if core:volume:freespace < 500 set loggingAllowed to false.
-  if not loggingAllowed return.
-  
-  // logging destination determined by signal status
-  if hasSignal set logVol to "0:".
-  if not hasSignal set logVol to "1:".
-  
   // log position data so an ascent path can be rendered after the launch
   geoData:add(ship:geoposition).
   altData:add(ship:altitude).
   vecData:add(ship:facing:vector).
   phaseData:add(phase).
-  writejson(pathData, logVol + ship:name + ".json").
+  stashmit(pathData, ship:name + ".json", "json").
   
   // calculate the new gravity value
   set grav to surfaceGravity/((((ship:orbit:body:radius + ship:altitude)/1000)/(ship:orbit:body:radius/1000))^2).
@@ -151,8 +115,8 @@ function logTlm {
                  ship:orbit:periapsis + "," +
                  ship:orbit:inclination + "," +
                  ship:velocity:surface:mag + "," +
-                 ship:availablethrust + "," +
                  currentThrust + "," +
+                 ship:availablethrust + "," +
                  grav + "," +
                  circle_distance(launchPosition, ship:geoposition, ship:orbit:body:radius) + "," +
                  ship:control:mainthrottle + "%," +
@@ -165,5 +129,5 @@ function logTlm {
   }
 
   // push the new data to the log
-  log datalog to logVol + ship:name + ".csv".
+  stashmit(datalog, ship:name + ".csv").
 }
