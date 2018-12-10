@@ -8,6 +8,18 @@ Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Change Log
 
+**Boot & Include updates** (12/9/18)
+
+AFCS:
+  - [boot.ks] New `load` command can stash a script file into the /ops/ folder but will not run it until the ground controllers activate it with a `run` command. You can still use `run` to load and then run a script at the same time, the difference in syntax is starting the file name with a "/" - if the flight computer sees this it knows it's searching for a file on the archive to load, otherwise it assumes the file is in the /ops/ folder on the vessel
+  - [boot.ks] sleep timers are monitored every tick and called when they run out and then destroyed or reset accordingly
+  - [helpFunc.ks] New function `sleep` allows you to set a callback to a function after a given amount of time. The amount of time can either be in seconds from the moment the sleep command is given or at a certain UT. This callback can then be called repeatedly over that period or just once. Repeated callbacks are their own functions, but single-use callbacks are inserted into the operations queue to be handled
+  - [logger.ks] Finally fixed the throttle output value
+  - [logger.ks] Looks for and also monitors non-rechargeable battery sources for total EC logging
+  - [logger.ks] Now outputs by default both surface and orbital velocity
+  - [logger.ks] Total thrust is now only calculated based on active engines
+  - [logger.ks] Logging reworked to use the `sleep` function from the calling script
+
 **New Comm & Control Interface** (11/27/18)
 
 AFCS:
