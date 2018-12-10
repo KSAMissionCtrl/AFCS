@@ -144,3 +144,26 @@ function stashmit {
     }
   }
 }
+
+// create wait timers without pausing code operation
+set sleepTimers to lexicon().
+function sleep {
+  parameter name.
+  parameter callback.
+  parameter napTime.
+  parameter relative.
+  parameter persist.
+
+  set timer to lexicon(
+    "persist", persist,
+    "naptime", napTime,
+    "relative", relative,
+    "name", name,
+    "callback", callback
+  ).
+
+  if persist set timer["startsec"] to floor(time:seconds).
+  else set timer["startsec"] to time:seconds.
+  
+  set sleepTimers[name] to timer.
+}

@@ -2,6 +2,7 @@
 // Initilaization
 //////////////////
 
+set steeringmanager:writecsvfiles to true.
 set launchPosition to ship:geoposition.
 set lastVectorPosition to ship:geoposition:altitudeposition(ship:altitude).
 set pathData to lexicon().
@@ -18,11 +19,16 @@ pathData:add("phase", phaseData).
 
 // monitor electric charge
 list resources in resList.
+set NonEClvl to 0.
+set fullChargeEC to 0.
 for res in resList { 
   if res:name = "electriccharge" { 
     lock EClvl to res:amount. 
-    set fullChargeEC to res:capacity.
-    break.
+    set fullChargeEC to fullChargeEC + res:capacity.
+  } else
+  if res:name = "electricchargenonrechargeable" { 
+    lock NonEClvl to res:amount. 
+    set fullChargeEC to fullChargeEC + res:capacity.
   } 
 }
 
@@ -56,7 +62,7 @@ function output {
 function initLog {
 
   // create the default CSV headers
-  set header to "UT,MET (s),Heading,Pitch,Roll,Dynamic Pressure - Q (kPa),Mass (t),Angle of Attack,AoA Test,Altitude (m),Latitude,Longitude,Apoapsis (m),Periapsis (m),Inclination,Velocity (m/s),Current Thrust (kN),Available Thrust (kN),Gravity,Distance Downrange (m),Throttle,Electric Charge,EC/Capacity".
+  set header to "UT,MET (s),Heading,Pitch,Roll,Dynamic Pressure - Q (kPa),Mass (t),Angle of Attack,Altitude (m),Latitude,Longitude,Apoapsis (m),Periapsis (m),Inclination,Surface Velocity (m/s),Orbital Velocity (m/s),Current Thrust (kN),Available Thrust (kN),Gravity,Distance Downrange (m),Throttle,Electric Charge,EC/Capacity".
   
   // add any additional headers?
   if addlLogData:length {
@@ -81,10 +87,10 @@ function logTlm {
   // calculate the new gravity value
   set grav to surfaceGravity/((((ship:orbit:body:radius + ship:altitude)/1000)/(ship:orbit:body:radius/1000))^2).
 
-  // get the sum of all current thrust on engines
+  // get the sum of all current thrust on active engines
   set currentThrust to 0.
   list engines in engList.
-  for eng in engList { set currentThrust to currentThrust + eng:thrust. }
+  for eng in engList { if eng:ignition { set currentThrust to currentThrust + eng:thrust. } }
 
   // https://www.reddit.com/r/Kos/comments/90okvr/looking_for_aoa_relative_to_the_craft/
   Set RollFactor to -1.
@@ -99,15 +105,14 @@ function logTlm {
   Set NEW_vertical_AOA to vertical_aoa()*RollFactor.
   
   // log all the default data
-  set datalog to currTime + "," +
+  set datalog to floor(time:seconds) + "," +
                  met + "," +
                  compass_for(ship) + "," +
                  pitch_for(ship) + "," +
                  roll_for(ship) + "," +
                  (ship:Q * constant:ATMtokPa) + "," +
                  ship:mass + "," +
-                 VANG(ship:facing:vector, ship:srfprograde:vector) + "," +
-                 NEW_vertical_AOA + "," +
+                 NEW_vertical_AOA*-1 + "," +
                  ship:altitude + "," +
                  ship:geoposition:lat + "," +
                  ship:geoposition:lng + "," +
@@ -115,13 +120,14 @@ function logTlm {
                  ship:orbit:periapsis + "," +
                  ship:orbit:inclination + "," +
                  ship:velocity:surface:mag + "," +
+                 ship:velocity:orbit:mag + "," +
                  currentThrust + "," +
                  ship:availablethrust + "," +
                  grav + "," +
                  circle_distance(launchPosition, ship:geoposition, ship:orbit:body:radius) + "," +
-                 ship:control:mainthrottle + "%," +
-                 round(EClvl, 2) + "," + 
-                 round(100 * EClvl / fullChargeEC, 2) + "%".
+                 (throttle*100) + "%," +
+                 round(EClvl+NonEClvl, 2) + "," + 
+                 round(100 * (EClvl + NonEClvl) / fullChargeEC, 2) + "%".
                  
   // add any additional data?
   if addlLogData:length {

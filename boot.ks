@@ -4,7 +4,6 @@
 
 clearscreen.
 set operations to lexicon().
-set timeout to 0.
 set runSafe to true.
 
 ////////////
@@ -19,30 +18,41 @@ function opsRun {
     if addons:rt:haskscconnection(ship) {
 
       // check if a new ops file is waiting to be executed
-      if archive:exists(ship:name + ".ops.ks") and not timeout {
+      if archive:exists(ship:name + ".ops.ks") {
 
         // read each line of the file and carry out the command
         set opLine to archive:open(ship:name + ".ops.ks"):readall:iterator.
         until not opLine:next  {
           set cmd to opLine:value:split(":").
-          if cmd[0] = "run" {
+          if cmd[0] = "load" or (runSafe and cmd[0] = "run") {
 
-            // confirm that this is an actual file. If it is not, ignore all further run commands
-            // this prevents a code crash if mis-loaded file had dependencies for future files
-            if not archive:exists(cmd[1] + ".ks") {
-              set runSafe to false.
-              output("Could not find " + cmd[1] + " - further run commands ignored").
-            } else if runSafe {
+            // if there is a / character at the beginning, then the file needs to be moved from the archive
+            if cmd[1][0] = "/" {
 
-              // if we are loading from a directory on the archive, only use the filename
-              if cmd[1]:contains("/") {
-                set copyName to cmd[1]:split("/").
-                set copyName to copyName[copyName:length-1].
-              } else set copyName to cmd[1].
-              set opTime to time:seconds.
-              copypath("0:" + cmd[1] + ".ks", "/ops/" + copyName + ".ks").
-              runpath("/ops/" + copyName + ".ks").
-              output("Instruction onload complete for " + copyName  + " (" + round(time:seconds - opTime,2) + "ms)").
+              // confirm that this is an actual file. If it is not, ignore all further run commands
+              // this prevents a code crash if mis-loaded file had dependencies for future files
+              if not archive:exists(cmd[1] + ".ks") {
+                set runSafe to false.
+                output("Could not find " + cmd[1] + " - further run commands ignored").
+              } else if runSafe or cmd[0] = "load" {
+
+                // if we are loading from a directory on the archive, only use the filename
+                if cmd[1]:contains("/") {
+                  set copyName to cmd[1]:split("/").
+                  set copyName to copyName[copyName:length-1].
+                } else set copyName to cmd[1].
+                set opTime to time:seconds.
+                copypath("0:" + cmd[1] + ".ks", "/ops/" + copyName + ".ks").
+                output("Instruction onload complete for " + copyName  + " (" + round(time:seconds - opTime,2) + "ms)").
+
+                // if we called run instead of just load, also run the script
+                if cmd[0] = "run" runpath("/ops/" + copyName + ".ks").
+              }
+
+            // if there is no / character at the beginning the file is already on the spacecraft
+            } else if cmd[1][0] <> "/" {
+              if core:volume:exists("/ops/" + cmd[1] + ".ks") runpath("/ops/" + cmd[1] + ".ks").
+              else output("Unable to find operations file " + cmd[1] + ".ks").
             }
           } else
           if cmd[0] = "del" {
@@ -93,6 +103,37 @@ function opsRun {
         output("data dump to KSC complete").
       }
     }
+
+    // are there any sleep timers to check?
+    set timerKill to list().
+    if sleepTimers:length {
+
+      // loop through all active timers
+      for timer in sleepTimers:values {
+
+        // decide if the timer has expired using time from when it was started (relative)
+        // or by the current time exceeding the specified alarm time
+        if 
+        (timer["relative"] and time:seconds - timer["startsec"] >= timer["naptime"])
+        or
+        (not timer["relative"] and time:seconds >= timer["naptime"]) {
+
+          // if the timer is up, decide how to proceed with the callback based on timer persistence
+          if timer["persist"] {
+
+            // this is a function called multiple times, so call it directly then reset the timer
+            timer["callback"]().
+            set timer["startsec"] to floor(time:seconds).
+          } else {
+
+            // this is a function called once, so add it to the ops queue and delete the timer        
+            set operations[timer["name"]] to timer["callback"].
+            timerKill:add(timer["name"]).
+          }
+        }
+      }
+    }
+    for deadID in timerKill sleepTimers:remove(deadID).
     
     // run any existing ops
     if operations:length {
