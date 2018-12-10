@@ -8,6 +8,19 @@ Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Change Log
 
+**New Comm & Control Interface** (11/27/18)
+
+AFCS:
+  - [boot.ks] Pretty much a complete refactoring of the entire boot system to standards of stricter comm and file protocols
+  - [boot.ks] Actual commands can now be sent to the flight computer to carry out various actions including running files, deleting files and directories, listing directory contents and rebooting the computer
+  - [boot.ks] When signal to KSC is regained, any locally stored data will be downloaded to the KSC archive
+  - [boot.ks] Operations files are now stored as they are named on the archive rather than with generic opCode numbers
+  - [boot.ks] Boot operations order has been changed to check for new bootscript first
+  - [boot.ks] If KSC connection is available, on boot the computer will replace /include files in case any were updated
+  - [helpFunc.ks] - New function `stashmit` decides whether to write a file to the local drive or KSC drive, depending on signal status. If writing to the local drive it attempts to ensure the capacity of the drive is not exceeded
+  - [logger.ks] - Updated to make use of `stashmit()`
+  - [logger.ks] - Fixed current thrust and available thrust being outputted in the wrong order
+
 **Progeny Mk6 Block I Flight 7** (7/31/18)
 
 AFCS:
