@@ -4,7 +4,20 @@
 
 clearscreen.
 set operations to lexicon().
+set varData to lexicon().
+set sleepTimers to lexicon().
 set runSafe to true.
+
+// find and store all antennas
+set commLinks to list().
+for part in ship:parts if part:hasmodule("ModuleRTAntenna") commLinks:add(part:getmodule("ModuleRTAntenna")).
+
+// get a hibernation controller?
+set canHibernate to false.
+if (ship:partstagged("hibernationCtrl"):length) {
+  set hibernateCtrl to ship:partstagged("hibernationCtrl")[0]:getmodule("Timer").
+  set canHibernate to true.
+}
 
 ////////////
 // Functions
@@ -24,37 +37,54 @@ function opsRun {
         set opLine to archive:open(ship:name + ".ops.ks"):readall:iterator.
         until not opLine:next  {
           set cmd to opLine:value:split(":").
-          if cmd[0] = "load" or (runSafe and cmd[0] = "run") {
 
-            // if there is a / character at the beginning, then the file needs to be moved from the archive
-            if cmd[1][0] = "/" {
+          // load a command file from KSC to the onboard disk
+          if cmd[0] = "load" {
+            if archive:exists(cmd[1] + ".ks") {
 
-              // confirm that this is an actual file. If it is not, ignore all further run commands
-              // this prevents a code crash if mis-loaded file had dependencies for future files
-              if not archive:exists(cmd[1] + ".ks") {
-                set runSafe to false.
-                output("Could not find " + cmd[1] + " - further run commands ignored").
-              } else if runSafe or cmd[0] = "load" {
-
-                // if we are loading from a directory on the archive, only use the filename
-                if cmd[1]:contains("/") {
-                  set copyName to cmd[1]:split("/").
-                  set copyName to copyName[copyName:length-1].
-                } else set copyName to cmd[1].
-                set opTime to time:seconds.
-                copypath("0:" + cmd[1] + ".ks", "/ops/" + copyName + ".ks").
-                output("Instruction onload complete for " + copyName  + " (" + round(time:seconds - opTime,2) + "ms)").
-
-                // if we called run instead of just load, also run the script
-                if cmd[0] = "run" runpath("/ops/" + copyName + ".ks").
-              }
-
-            // if there is no / character at the beginning the file is already on the spacecraft
-            } else if cmd[1][0] <> "/" {
-              if core:volume:exists("/ops/" + cmd[1] + ".ks") runpath("/ops/" + cmd[1] + ".ks").
-              else output("Unable to find operations file " + cmd[1] + ".ks").
+              // if we are loading from a directory on the archive, only use the filename
+              if cmd[1]:contains("/") {
+                set copyName to cmd[1]:split("/").
+                set copyName to copyName[copyName:length-1].
+              } else set copyName to cmd[1].
+              copypath("0:" + cmd[1] + ".ks", "/cmd/" + copyName + ".ks").
+              output("Instruction onload complete for " + copyName).
+            } else {
+              output("Could not find " + cmd[1]).
             }
           } else
+
+          // run a file that we want to remain running even after reboots
+          if runSafe and cmd[0] = "run" {
+
+            // confirm that this is an actual file. If it is not, ignore all further run commands
+            // this prevents a code crash if mis-loaded file had dependencies for future files
+            if not core:volume:exists("/ops/" + cmd[1] + ".ks") {
+
+              // check if the file exists in the commands folder and copy it over if it does
+              if core:volume:exists("/cmd/" + cmd[1] + ".ks") copypath("/cmd/" + cmd[1] + ".ks", "/ops/" + cmd[1] + ".ks").
+              else {
+                set runSafe to false.
+                output("Could not find " + cmd[1] + " - further run commands ignored").
+              }
+            }
+            if runSafe {
+              set opTime to time:seconds.
+              runpath("/ops/" + cmd[1] + ".ks").
+              output("Instruction run complete for " + cmd[1]  + " (" + round(time:seconds - opTime,2) + "ms)").
+            }
+          } else 
+
+          // run a file that we only want to execute this once
+          if cmd[0] = "cmd" {
+            if core:volume:exists("/cmd/" + cmd[1] + ".ks") {
+              runpath("/cmd/" + cmd[1] + ".ks").
+              output("Command load complete for " + cmd[1]).
+            }
+            else output("Could not find /cmd/" + cmd[1]).
+          } else
+
+          // delete a file
           if cmd[0] = "del" {
             if core:volume:exists("/" + cmd[1] + ".ks") {
               core:volume:delete("/" + cmd[1] + ".ks").
@@ -63,6 +93,8 @@ function opsRun {
               output("Could not find /" + cmd[1]).
             }
           } else
+
+          // delete all the files in a directory
           if cmd[0] = "wipe" {
             if core:volume:exists("/" + cmd[1]) {
               core:volume:delete("/" + cmd[1]).
@@ -70,14 +102,16 @@ function opsRun {
             } else output("Could not find directory /" + cmd[1]).
 
             // do not let the deletion of required directories remain
-            if not core:volume:exists("/data") core:volume:createdir("/data").
-            if not core:volume:exists("/ops") core:volume:createdir("/ops").
-            if not core:volume:exists("/includes") core:volume:createdir("/includes").
+            reqDirCheck().
           } else
+
+          // print to console (not log) all files in a directory
           if cmd[0] = "list" {
             if core:volume:exists("/" + cmd[1]) print core:volume:open("/" + cmd[1]):list.
             else print "could not find directory".
           } else
+
+          // reboot the cpu
           if cmd[0] = "reboot" {
             archive:delete(ship:name + ".ops.ks").
             reboot.
@@ -144,6 +178,28 @@ function opsRun {
   }
 }
 
+// create wait timers without pausing code operation
+function sleep {
+  parameter name.
+  parameter callback.
+  parameter napTime.
+  parameter relative.
+  parameter persist.
+
+  set timer to lexicon(
+    "persist", persist,
+    "naptime", napTime,
+    "relative", relative,
+    "name", name,
+    "callback", callback
+  ).
+
+  if persist set timer["startsec"] to floor(time:seconds).
+  else set timer["startsec"] to time:seconds.
+  
+  set sleepTimers[name] to timer.
+}
+
 // keep a running tally of signal status
 function commStatus {
   if addons:rt:haskscconnection(ship) {
@@ -153,6 +209,94 @@ function commStatus {
     output("KSC link lost").
     when addons:rt:haskscconnection(ship) then commStatus().
   }
+}
+
+// enable/disable comms
+function setCommStatus {
+  parameter connection.
+  if connection and not addons:rt:hasconnection(ship) for comms in commLinks comms:doevent("Activate").
+  else if not connection and addons:rt:hasconnection(ship) for comms in commLinks comms:doevent("Deactivate").
+}
+
+// define a variable with this value only if it doesn't already exist
+function declr {
+  parameter varName.
+  parameter value.
+  if not varData:haskey(varName) set varData[varName] to value.
+}
+
+// set or create a variable value. If no value supplied, delete the variable or just do nothing
+function setter {
+  parameter varName.
+  parameter value is "killmeplzkthxbye".
+  if value = "killmeplzkthxbye" and varData:haskey(varName) varData:remove(varName).
+  else if value <> "killmeplzkthxbye" set varData[varName] to value.
+}
+
+// get the value of a variable
+function getter {
+  parameter varName.
+  if varData:haskey(varName) return varData[varName].
+  else return 0.
+}
+
+// place the command probe into a state of minimum power
+function hibernate {
+  parameter wakefile.
+  parameter duration.
+  parameter comms is false.
+
+  // only proceed if hibernation is available
+  if canHibernate {
+
+    // set comms as requested
+    setCommStatus(comms).
+
+    // define the file that will run once after coming out of hibernation
+    setter("wakeFile", wakeFile).
+
+    // save all the current volatile data
+    writejson(varData, "/mem/varData.json").
+    writejson(operations, "/mem/opsData.json").
+    writejson(sleepTimers, "/mem/timerData.json").
+
+    // set and activate the timer
+    hibernateCtrl:setfield("seconds", duration).
+    hibernateCtrl:doevent("Start Countdown").
+
+    // switch off the cpu. Nite nite!
+    output("Activating hibernation").
+    ship:partstagged("cpu")[0]:getmodule("ModuleGenerator"):doevent("Hibernate CPU").
+    ship:partstagged("cpu")[0]:getmodule("KOSProcessor"):doevent("Toggle Power").
+  } else output ("Hibernation is not supported on this vessel!").
+}
+
+// these directories should always exist and never be deleted
+function reqDirCheck {
+  if not core:volume:exists("/data") core:volume:createdir("/data").
+  if not core:volume:exists("/mem") core:volume:createdir("/mem").
+  if not core:volume:exists("/ops") core:volume:createdir("/ops").
+  if not core:volume:exists("/cmd") core:volume:createdir("/cmd").
+}
+
+// loads a file from the command folder for running when the computer awakens or is reloaded
+function loadOpsFile {
+  parameter filename.
+  if core:volume:exists("/cmd/" + filename + ".ks") {
+    copypath("/cmd/" + filename + ".ks", "/ops/" + filename + ".ks").
+    output(filename + " loaded for execution").
+  } else output("Could not find " + filename + " to load").
+}
+
+// loads and runs a file from the command folder
+function runOpsFile {
+  parameter filename.
+  if core:volume:exists("/cmd/" + filename + ".ks") {
+    copypath("/cmd/" + filename + ".ks", "/ops/" + filename + ".ks").
+    set opTime to time:seconds.
+    runpath("/ops/" + filename + ".ks").
+    output(filename + " loaded and executed (" + round(time:seconds - opTime,2) + "ms)").
+  } else output("Could not find " + filename + " to execute").
 }
 
 ////////////////////////
@@ -178,32 +322,52 @@ if addons:rt:haskscconnection(ship) {
 // run what dependencies we have stored
 for includeFile in core:volume:open("/includes"):list:values runpath("/includes/" + includeFile).
 
-// date stamp the log if this is our first time booting up
-if not core:volume:exists("/data") {
-  core:volume:createdir("/data").
-  core:volume:createdir("/ops").
-  stashmit("[" + time:calendar + "] system boot up").
-}
+// ensure required directories exist
+reqDirCheck().
 
-// get initial signal status then monitor it
-if addons:rt:haskscconnection(ship) {
-  output("KSC link acquired").
-  when not addons:rt:haskscconnection(ship) then commStatus().
-} else {
-  output("KSC link not acquired").
-  when addons:rt:haskscconnection(ship) then commStatus().
-}
-
-// if there are any operations stored on the local drive, run them
+// load any persistent data and operations
+if core:volume:exists("/mem/varData.json") set varData to readjson("/mem/varData.json").
 if core:volume:open("/ops"):size {
   output("loading onboard operations").
   for opsFile in core:volume:open("/ops"):list:values runpath("/ops/" + opsFile).
   output("onboard operations executed").
 }
+if core:volume:exists("/mem/opsData.json") set operations to readjson("/mem/opsData.json").
+if core:volume:exists("/mem/timerData.json") set sleepTimers to readjson("/mem/timerData.json").
+
+// initial persistent variable definitions
+declr("startupUT", time:seconds).
+declr("lastDay", -1).
+
+// date stamp the log if this is a different day then update the day
+if getter("lastDay") <> time:day stashmit("[" + time:calendar + "]").
+setter("lastDay", time:day).
+
+// are any comms active?
+set commsOnline to false.
+for comms in commLinks {
+  if comms:hasevent("Deactivate") {
+
+    // get initial signal status then monitor it
+    if addons:rt:haskscconnection(ship) {
+      output("KSC link acquired").
+      when not addons:rt:haskscconnection(ship) then commStatus().
+    } else {
+      output("KSC link not acquired").
+      when addons:rt:haskscconnection(ship) then commStatus().
+    }
+    set commsOnline to true.
+  }
+}
+if not commsOnline when addons:rt:haskscconnection(ship) then commStatus().
+
+output("System boot complete").
 
 ////////////////
 // Begin ops run
 ////////////////
 
-output("System boot complete").
+// if we came out of hibernation, call the file and delete the variable
+if getter("wakeFile") runpath("/cmd/" + getter("wakeFile") + ".ks").
+setter("wakeFile").
 opsRun().

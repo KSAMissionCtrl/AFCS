@@ -84,7 +84,7 @@ LOCK roll TO ARCTAN2(-VDOT(FACING:STARVECTOR, UP:FOREVECTOR), VDOT(FACING:TOPVEC
 // uses current signal status to determine whether data should be stashed or transmitted
 // we always want to transmit data to save file space, only stash data if signal is not available
 // by default, data is stashed in the vessel log
-set jsonSizes to lexicon().
+declr("jsonSizes", lexicon()).
 function stashmit {
   parameter data.
   parameter filename is ship:name + ".log.np2".
@@ -102,8 +102,8 @@ function stashmit {
     if filetype = "json" {
       set filesize to archive:open(filename):size.
       writejson(data, "0:/" + filename).
-      if not jsonSizes:haskey(filename) jsonSizes:add(filename, list()).
-      jsonSizes[filename]:add(archive:open(filename):size - filesize).
+      if not getter("jsonSizes"):haskey(filename) getter("jsonSizes"):add(filename, list()).
+      getter("jsonSizes")[filename]:add(archive:open(filename):size - filesize).
     }
 
   // stash the information if we have enough space
@@ -114,15 +114,15 @@ function stashmit {
 
       // if the json file has not yet been written, we won't know the size
       // set size to 15bytes per value to avoid disk write overrun
-      if not jsonSizes:haskey(filename) {
-        jsonSizes:add(filename, list()).
+      if not getter("jsonSizes"):haskey(filename) {
+        getter("jsonSizes"):add(filename, list()).
         set dataSize to 15 * data:length.
       } else {
 
         // get the average size of this json object
         set dataSize to 0.
-        for filesize in jsonSizes[filename] set dataSize to dataSize + filesize.
-        set dataSize to dataSize / jsonSizes[filename]:length.
+        for filesize in getter("jsonSizes")[filename] set dataSize to dataSize + filesize.
+        set dataSize to dataSize / getter("jsonSizes")[filename]:length.
       }
     } else {
       set dataSize to data:length.
@@ -139,31 +139,8 @@ function stashmit {
       if filetype = "json" {
         set filesize to core:volume:open("/data/" + filename):size.
         writejson(data, "1:/data/" + filename).
-        jsonSizes[filename]:add(core:volume:open("/data/" + filename):size - filesize).
+        getter("jsonSizes")[filename]:add(core:volume:open("/data/" + filename):size - filesize).
       }
     }
   }
-}
-
-// create wait timers without pausing code operation
-set sleepTimers to lexicon().
-function sleep {
-  parameter name.
-  parameter callback.
-  parameter napTime.
-  parameter relative.
-  parameter persist.
-
-  set timer to lexicon(
-    "persist", persist,
-    "naptime", napTime,
-    "relative", relative,
-    "name", name,
-    "callback", callback
-  ).
-
-  if persist set timer["startsec"] to floor(time:seconds).
-  else set timer["startsec"] to time:seconds.
-  
-  set sleepTimers[name] to timer.
 }

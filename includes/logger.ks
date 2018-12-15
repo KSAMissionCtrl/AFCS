@@ -2,33 +2,25 @@
 // Initilaization
 //////////////////
 
-set steeringmanager:writecsvfiles to true.
-set launchPosition to ship:geoposition.
-set lastVectorPosition to ship:geoposition:altitudeposition(ship:altitude).
-set pathData to lexicon().
-set addlLogData to lexicon().
-set altData to list().
-set geoData to list().
-set vecData to list().
-set phaseData to list().
-set logList to list().
-pathData:add("alt", altData).
-pathData:add("geo", geoData).
-pathData:add("vec", vecData).
-pathData:add("phase", phaseData).
+declr("launchPositionLat", ship:geoposition:lat).
+declr("launchPositionLng", ship:geoposition:lng).
+declr("addlLogData", lexicon()).
 
 // monitor electric charge
 list resources in resList.
 set NonEClvl to 0.
 set fullChargeEC to 0.
-for res in resList { 
-  if res:name = "electriccharge" { 
-    lock EClvl to res:amount. 
-    set fullChargeEC to fullChargeEC + res:capacity.
-  } else
-  if res:name = "electricchargenonrechargeable" { 
-    lock NonEClvl to res:amount. 
-    set fullChargeEC to fullChargeEC + res:capacity.
+for resEC in resList { 
+  if resEC:name = "electriccharge" { 
+    lock EClvl to resEC:amount. 
+    set fullChargeEC to fullChargeEC + resEC:capacity.
+    break.
+  }
+}
+for resNonEC in resList { 
+  if resNonEC:name = "electricchargenonrechargeable" { 
+    lock NonEClvl to resNonEC:amount. 
+    set fullChargeEC to fullChargeEC + resNonEC:capacity.
   } 
 }
 
@@ -65,8 +57,8 @@ function initLog {
   set header to "UT,MET (s),Heading,Pitch,Roll,Dynamic Pressure - Q (kPa),Mass (t),Angle of Attack,Altitude (m),Latitude,Longitude,Apoapsis (m),Periapsis (m),Inclination,Surface Velocity (m/s),Orbital Velocity (m/s),Current Thrust (kN),Available Thrust (kN),Gravity,Distance Downrange (m),Throttle,Electric Charge,EC/Capacity".
   
   // add any additional headers?
-  if addlLogData:length {
-    for addlHeader in addlLogData:keys { set header to header + "," + addlHeader. }
+  if getter("addlLogData"):length {
+    for addlHeader in getter("addlLogData"):keys { set header to header + "," + addlHeader. }
   }
   
   // output all the headers
@@ -76,13 +68,6 @@ function initLog {
 // log the telemetry data each - whatever. Calling program will decide how often to log
 function logTlm {
   parameter met.
-  
-  // log position data so an ascent path can be rendered after the launch
-  geoData:add(ship:geoposition).
-  altData:add(ship:altitude).
-  vecData:add(ship:facing:vector).
-  phaseData:add(phase).
-  stashmit(pathData, ship:name + ".json", "json").
   
   // calculate the new gravity value
   set grav to surfaceGravity/((((ship:orbit:body:radius + ship:altitude)/1000)/(ship:orbit:body:radius/1000))^2).
@@ -124,14 +109,14 @@ function logTlm {
                  currentThrust + "," +
                  ship:availablethrust + "," +
                  grav + "," +
-                 circle_distance(launchPosition, ship:geoposition, ship:orbit:body:radius) + "," +
+                 circle_distance(latlng(getter("launchPositionLat"),getter("launchPositionLng")), ship:geoposition, ship:orbit:body:radius) + "," +
                  (throttle*100) + "%," +
                  round(EClvl+NonEClvl, 2) + "," + 
                  round(100 * (EClvl + NonEClvl) / fullChargeEC, 2) + "%".
                  
   // add any additional data?
-  if addlLogData:length {
-    for data in addlLogData:values { set datalog to datalog + "," + data(). }
+  if getter("addlLogData"):length {
+    for data in getter("addlLogData"):values { set datalog to datalog + "," + data(). }
   }
 
   // push the new data to the log
