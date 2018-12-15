@@ -8,17 +8,32 @@ Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Change Log
 
+**Data Persistence & Hibernation** (12/9/18)
+
+AFCS:
+  - [boot.ks] `load:` command has been changed to only place a file from the archive into the /cmd directory on the vessel
+  - [boot.ks] `run:` command has been changed to run a file in the /ops directory. If it is not found there, the /cmd directory is searched and if the file is there it is copied to the /ops directory
+  - [boot.ks] `cmd:` this new command only runs a file if it is found in the /cmd directory. This means that any file run with this command will not be automatically run when the AFCS is awoken from hibernation or otherwise reloaded
+  - [boot.ks] New `decl()`, `getter()` and `setter()` functions allow the computer to use persistent variables - if the computer is shut down and restarted or reloaded the variable data will be reloaded as well to use from the previous state. All necessary variables in the AFCS files have been modified to be persistent
+  - [boot.ks] New `setCommStatus()` function allows the computer to turn on or off all communication devices
+  - [boot.ks] `sleep()` has been moved from the helper functions file to made a core part of the bootscript
+  - [boot.ks] New `hibernate()` function shuts down the probe core and optionally the comms to a trickle of power. It is automatically re-activated after a set period of time. Requires a [smart part timer](https://forum.kerbalspaceprogram.com/index.php?/topic/151340-14x-smart-parts-continued/)
+  - [boot.ks] New `loadOpsFile()` and `runOpsFile()` functions let you perform `cmd:` and `run:` equivalent commands in script
+  - [boot.ks] The status of the KSC comm connection is no longer logged if there are no active comm devices
+  - [logger.ks] The ascent path data has been removed since there is a bug in kOS when serializing a `geoposition` object
+  - [logger.ks] Fixed an issue where the EC resource monitor was locking to the wrong resource type
+
 **Boot & Include updates** (12/9/18)
 
 AFCS:
-  - [boot.ks] New `load` command can stash a script file into the /ops/ folder but will not run it until the ground controllers activate it with a `run` command. You can still use `run` to load and then run a script at the same time, the difference in syntax is starting the file name with a "/" - if the flight computer sees this it knows it's searching for a file on the archive to load, otherwise it assumes the file is in the /ops/ folder on the vessel
+  - [boot.ks] New `load:` command can stash a script file into the /ops/ folder but will not run it until the ground controllers activate it with a `run:` command. You can still use `run` to load and then run a script at the same time, the difference in syntax is starting the file name with a "/" - if the flight computer sees this it knows it's searching for a file on the archive to load, otherwise it assumes the file is in the /ops/ folder on the vessel
   - [boot.ks] sleep timers are monitored every tick and called when they run out and then destroyed or reset accordingly
-  - [helpFunc.ks] New function `sleep` allows you to set a callback to a function after a given amount of time. The amount of time can either be in seconds from the moment the sleep command is given or at a certain UT. This callback can then be called repeatedly over that period or just once. Repeated callbacks are their own functions, but single-use callbacks are inserted into the operations queue to be handled
+  - [helpFunc.ks] New function `sleep()` allows you to set a callback to a function after a given amount of time. The amount of time can either be in seconds from the moment the sleep command is given or at a certain UT. This callback can then be called repeatedly over that period or just once. Repeated callbacks are their own functions, but single-use callbacks are inserted into the operations queue to be handled
   - [logger.ks] Finally fixed the throttle output value
   - [logger.ks] Looks for and also monitors non-rechargeable battery sources for total EC logging
   - [logger.ks] Now outputs by default both surface and orbital velocity
   - [logger.ks] Total thrust is now only calculated based on active engines
-  - [logger.ks] Logging reworked to use the `sleep` function from the calling script
+  - [logger.ks] Logging reworked to use the `sleep()` function from the calling script
 
 **New Comm & Control Interface** (11/27/18)
 
@@ -29,7 +44,7 @@ AFCS:
   - [boot.ks] Operations files are now stored as they are named on the archive rather than with generic opCode numbers
   - [boot.ks] Boot operations order has been changed to check for new bootscript first
   - [boot.ks] If KSC connection is available, on boot the computer will replace /include files in case any were updated
-  - [helpFunc.ks] - New function `stashmit` decides whether to write a file to the local drive or KSC drive, depending on signal status. If writing to the local drive it attempts to ensure the capacity of the drive is not exceeded
+  - [helpFunc.ks] - New function `stashmit()` decides whether to write a file to the local drive or KSC drive, depending on signal status. If writing to the local drive it attempts to ensure the capacity of the drive is not exceeded
   - [logger.ks] - Updated to make use of `stashmit()`
   - [logger.ks] - Fixed current thrust and available thrust being outputted in the wrong order
 
