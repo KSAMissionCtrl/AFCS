@@ -87,8 +87,18 @@ function stageOneBoost {
 function stageTwoCoast {
   
   // check for anomalous AoA
-  if VANG(ship:facing:vector, ship:srfprograde:vector) > s2AoALimit {
-    output("Angle of Attack constraint exceeded by " + round(VANG(ship:facing:vector, ship:srfprograde:vector) - s2AoALimit, 3) + " - awaiting manual staging").
+  Set RollFactor to -1.
+  If roll < 90 {
+    if roll > -90 {
+      set RollFactor to 1.
+    }
+  }
+  If Ship:Airspeed < 1 {
+    Set RollFactor to 0.
+  }
+  Set verticalAOAupdate to vertical_aoa()*RollFactor.
+  if verticalAOAupdate > s2AoALimit {
+    output("Angle of Attack constraint exceeded by " + round(verticalAOAupdate - s2AoALimit, 3) + " - awaiting manual staging").
     operations:remove("stageTwoCoast").
     set operations["stageTwoBoostWait"] to stageTwoBoostWait@.
   }
@@ -195,10 +205,10 @@ function chuteDeploy {
 function coastToLanding {
   if ship:status = "SPLASHED" {
     output("Splashdown @ " + round(abs(chuteSpeed), 3) + "m/s, " + round(circle_distance(launchPosition, ship:geoposition, ship:orbit:body:radius)/1000, 3) + "km downrange").
-    set isLanded to true.
+    operations:remove("coastToLanding").
   } else if ship:status = "LANDED" {
     output("Touchdown @ " + round(abs(chuteSpeed), 3) + "m/s, " + round(circle_distance(launchPosition, ship:geoposition, ship:orbit:body:radius)/1000, 3) + "km downrange").
-    set isLanded to true.
+    operations:remove("coastToLanding").
   } else if time:seconds - currTime >= logInterval { set chuteSpeed to ship:verticalspeed. }
 }
 
