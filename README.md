@@ -8,6 +8,14 @@ Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Change Log
 
+**Progeny Mk6 Block I Flight 8** (1/15/19)
+
+Operations:
+  - [ascent.ks] AoA monitoring now uses the newer code tested for the telemetry output
+  - [ascent.ks] Change to how the rocket detects it has landed after re-entry
+  - [initialize.ks] New launch time
+  - [initialize.ks] Change to how the rocket detects it has landed after re-entry
+
 **Data Persistence & Hibernation** (12/9/18)
 
 AFCS:
