@@ -1,38 +1,26 @@
-function reentry {
+function chuteDeploy {
 
-  // keep tabs on our pitch angle - if we manage to make it to horizontal, pitch up 15 degrees and hold
-  if abs(pitch_for(ship)) < 1 {
-    set pitch to 15.
-    operations:remove("reentry").
-    output("Level glide achieved").
+  // keep track of speed and altitude
+  // release chute as soon as it's safe, or as last-ditch attempt if below 3km
+  if ship:velocity:surface:mag < chuteSafeSpeed or alt:radar < 3000 {
+    parachutes:doevent("deploy chute").
+    output("Initial chute deploy triggered @ " + round(ship:altitude/1000, 3) + "km").
+    set phase to "initial Chute Deploy".
+    when abs(ship:verticalspeed) <= 13 then {
+      output("Full chute deployment @ " + round(ship:altitude, 3) + "m").
+      set phase to "Full Chute Deploy".
+      set operations["coastToLanding"] to coastToLanding@.
+    }
+    operations:remove("chuteDeploy").
   }
 }
 
 function coastToLanding {
-  if ship:status = "SPLASHED" {
-    output("Splashdown @ " + round(abs(chuteSpeed), 3) + "m/s, " + round(circle_distance(launchPosition, ship:geoposition, ship:orbit:body:radius)/1000, 3) + "km downrange").
-    landed().
-  } else if ship:status = "LANDED" {
-    output("Touchdown @ " + round(abs(chuteSpeed), 3) + "m/s, " + round(circle_distance(launchPosition, ship:geoposition, ship:orbit:body:radius)/1000, 3) + "km downrange").
-    landed().
-  } else if time:seconds - currTime >= logInterval { set chuteSpeed to ship:verticalspeed. }
-}
-
-function landed {
-  operations:remove("ongoingOps").
-  operations:remove("coastToLanding").
-  output("flight operations concluded").
-  
-  // output one final log entry
-  if time:seconds - currTime >= logInterval {
-    set currTime to floor(time:seconds).
-    logTlm(currTime - launchTime).
-  } else {
-    when time:seconds - currTime >= logInterval then {
-      set currTime to floor(time:seconds).
-      logTlm(currTime - launchTime).
-    }
-  }
+  if ship:status = "SPLASHED" or ship:status = "LANDED" {
+    output(ship:status + " @ " + round(abs(chuteSpeed), 3) + "m/s, " + round(circle_distance(launchPosition, ship:geoposition, ship:orbit:body:radius)/1000, 3) + "km downrange").
+    operations:remove("coastToLanding").
+    output("flight operations concluded").
+  } else set chuteSpeed to ship:verticalspeed.
 }
 
 output("Return ops loaded").
