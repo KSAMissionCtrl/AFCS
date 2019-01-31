@@ -8,6 +8,16 @@ Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Change Log
 
+**Ascension Mk1 Block I Flight 3** (1/22/19)
+
+Operations:
+  - [ascent.ks] General script overhaul to conform to new AFCS bootscript protocols and make use of new capabilities like sleep timers and comms loss handling
+  - [ascent.ks] New pitch profile entered in quadtratic fit formula
+  - [initialize.ks] New Launch time
+  - [initialize.ks] Chute deploy speed defined so chute isn't popped when supersonic
+  - [orbit.ks] New routines added for test mass separation
+  - [return.ks] New routines added for landing of test mass
+
 **Progeny Mk6 Block I Flight 8** (1/15/19)
 
 Operations:
