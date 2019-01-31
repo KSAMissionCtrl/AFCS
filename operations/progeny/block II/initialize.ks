@@ -1,22 +1,21 @@
-// initialize variables
+// initialize non-volatile variables
 set abort to false.
-set isLanded to false.
-set stageCountdown to 0.
-set chuteSafeSpeed to 490.
-set phase to "Stage One Radial Ascent".
-set launchTime to 55771380.
 set maxECdrain to 1.
-set logInterval to 1.
 set pitchLimit to 1.5.
 set s2AoALimit to 0.5.
 set maxQ to 0.
-set currTime to floor(time:seconds).
+set rdyToHibernate to false.
 
-// keep track of part status
+// initialize volatile variables
+declr("launchTime", 75210420).
+declr("phase", "Stage One Radial Ascent").
+
+// keep track of part status 
 lock stageOneMain to ship:partstagged("srb1m")[0]:getmodule("ModuleEnginesFX"):getfield("status").
 lock stageOneRadial to ship:partstagged("srb1r")[0]:getmodule("ModuleEnginesFX"):getfield("status").
 lock stageTwo to ship:partstagged("srb2")[0]:getmodule("ModuleEnginesFX"):getfield("status").
 lock stageThree to ship:partstagged("lfo1")[0]:getmodule("ModuleEnginesFX"):getfield("status").
+lock radlvl to ship:partstagged("radsense")[0]:getmodule("Sensor"):getfield("Radiation").
 
 // get parts now so searching doesn't hold up main program execution
 set srb1 to ship:partstagged("srb1m")[0]:getmodule("ModuleEnginesFX").
@@ -40,51 +39,28 @@ set s2fins to list(
   ship:partstagged("s2fin")[2]:getmodule("Kaboom")
 ).
 set lfo1 to ship:partstagged("lfo1")[0]:getmodule("ModuleEnginesFX").
-set chute to ship:partstagged("chute")[0]:getmodule("RealChuteModule").
 
 // set the throttle
 lock throttle to 1.
 
-// used for anything to be done continuously after launch
-function ongoingOps {
-  if ship:q > maxQ set maxQ to ship:q.
-  
-  if isLanded {
-    operations:remove("ongoingOps").
-    operations:remove("coastToLanding").
-    output("flight operations concluded").
-    
-    // output one final log entry
-    if time:seconds - currTime >= logInterval {
-      set currTime to floor(time:seconds).
-      logTlm(currTime - launchTime).
-    } else {
-      when time:seconds - currTime >= logInterval then {
-        set currTime to floor(time:seconds).
-        logTlm(currTime - launchTime).
-      }
-    }
-  } else {
-  
-    // log data every defined interval
-    if time:seconds - currTime >= logInterval {
-      set currTime to floor(time:seconds).
-      logTlm(currTime - launchTime).
-    }
-  }
-}
-
-// output the radiation levels in text or as number
-function logRad {
-  set radlvl to ship:partstagged("payload1")[0]:getmodule("Sensor"):getfield("Radiation").
+// add any custom logging fields, then call for header write and setup log call
+set getter("addlLogData")["Rad/hr"] to {
   if radlvl <> "nominal" {
     set radlvl to radlvl:split(" ")[0].
   }
   return radlvl.
-}
-
-// add any custom logging fields, then call for header write
-set addlLogData["Rad/hr"] to logRad@.
+}.
 initLog().
+function logData {
+  logTlm(floor(time:seconds) - getter("launchTime")).
+
+  // remove the timer after a final log post engine shutdown on the way up
+  // set reference points for future logging during hibernation cycles
+  if rdyToHibernate {
+    setter("lastLog", floor(time:seconds)).
+    setter("lastLink", floor(time:seconds)).
+    sleepTimers:remove("datalogger").
+  }
+}
 
 output("Vessel boot up").
