@@ -8,6 +8,13 @@ Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Change Log
 
+**Progeny Mk6 Block II Flight 2** (1/31/19)
+
+Operations:
+  - Changes to match new bootscript handling of dynamic variables and sleep timers to replace triggers
+  - New method of AoA calculation for second stage coast
+  - Hibernation routines to allow for power to last the entire flight
+
 **Ascension Mk1 Block I Flight 3** (1/22/19)
 
 Operations:
