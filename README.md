@@ -8,6 +8,12 @@ Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Change Log
 
+**Progeny Mk6 Block I Flight 9** (2/7/19)
+
+Operations:
+  - Change launch time
+  - Change science instruments
+
 **Progeny Mk6 Block II Flight 2** (1/31/19)
 
 Operations:
