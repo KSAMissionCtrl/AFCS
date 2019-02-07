@@ -5,7 +5,7 @@ set stageCountdown to 0.
 set chuteSafeSpeed to 490.
 set chuteSpeed to 0.
 set phase to "Stage One Ascent".
-set launchTime to 73911360.
+set launchTime to 75816660.
 set maxECdrain to 1.
 set logInterval to 1.
 set pitchLimit to 1.5.
