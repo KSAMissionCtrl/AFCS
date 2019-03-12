@@ -8,6 +8,14 @@ Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Change Log
 
+**Progeny Mk6 Block I Flight 10** (3/12/19)
+
+Operations:
+  - Change launch time
+  - Change science instruments
+  - Allow easier editing of launch time after AFCS is initialized
+  - Fix rare bug that could cause rocket to think it already landed before it takes off
+
 **Progeny Mk6 Block I Flight 9** (2/7/19)
 
 Operations:
