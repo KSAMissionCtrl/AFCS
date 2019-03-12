@@ -1,17 +1,26 @@
 // functions are in the order of flight operations
+function TCountNotification {
+  output("Terminal count begun, monitoring EC levels").
+  operations:remove("TCountNotification").
+}
+
 function terminalCount {
 
-  // until launch, ensure that EC levels are not falling faster than they should be
-  set currEC to EClvl.
-  if currEC - EClvl >= maxECdrain {
-    setAbort(true, "EC drain is excessive at " + round(currEC - EClvl, 3) + "ec/s").
-    operations:remove("terminalCount").
-  }
+  // terminal count begins 2min prior to launch
+  if time:seconds <= launchTime - 120 {
 
-  // set up for ignition at T-0 seconds
-  when time:seconds >= launchTime then {
-    operations:remove("terminalCount").
-    set operations["launch"] to launch@.
+    // until launch, ensure that EC levels are not falling faster than they should be
+    set currEC to EClvl.
+    if currEC - EClvl >= maxECdrain {
+      setAbort(true, "EC drain is excessive at " + round(currEC - EClvl, 3) + "ec/s").
+      operations:remove("terminalCount").
+    }
+
+    // set up for ignition at T-0 seconds
+    when time:seconds >= launchTime then {
+      operations:remove("terminalCount").
+      set operations["launch"] to launch@.
+    }
   }
 }
 
@@ -204,17 +213,14 @@ function chuteDeploy {
 
 function coastToLanding {
   if ship:status = "SPLASHED" {
-    output("Splashdown @ " + round(abs(chuteSpeed), 3) + "m/s, " + round(circle_distance(launchPosition, ship:geoposition, ship:orbit:body:radius)/1000, 3) + "km downrange").
+    output("Splashdown @ " + round(abs(chuteSpeed), 3) + "m/s, " + round(circle_distance(latlng(getter("launchPositionLat"),getter("launchPositionLng")), ship:geoposition, ship:orbit:body:radius)/1000, 3) + "km downrange").
     operations:remove("coastToLanding").
   } else if ship:status = "LANDED" {
-    output("Touchdown @ " + round(abs(chuteSpeed), 3) + "m/s, " + round(circle_distance(launchPosition, ship:geoposition, ship:orbit:body:radius)/1000, 3) + "km downrange").
+    output("Touchdown @ " + round(abs(chuteSpeed), 3) + "m/s, " + round(circle_distance(latlng(getter("launchPositionLat"),getter("launchPositionLng")), ship:geoposition, ship:orbit:body:radius)/1000, 3) + "km downrange").
     operations:remove("coastToLanding").
   } else if time:seconds - currTime >= logInterval { set chuteSpeed to ship:verticalspeed. }
 }
 
-// terminal count begins 2min prior to launch
-when time:seconds >= launchTime - 120 then {
-  output("Terminal count begun, monitoring EC levels").
-  set operations["terminalCount"] to terminalCount@.
-}
+set operations["terminalCount"] to terminalCount@.
+sleep("TCountNotification", TCountNotification@, launchTime - 120, false, false).
 output("Launch/Ascent ops ready, awaiting terminal count").

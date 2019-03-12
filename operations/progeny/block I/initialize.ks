@@ -5,7 +5,7 @@ set stageCountdown to 0.
 set chuteSafeSpeed to 490.
 set chuteSpeed to 0.
 set phase to "Stage One Ascent".
-set launchTime to 75816660.
+set launchTime to 78675000.
 set maxECdrain to 1.
 set logInterval to 1.
 set pitchLimit to 1.5.
@@ -45,7 +45,8 @@ set airbrakes to list(
 function ongoingOps {
   if ship:q > maxQ set maxQ to ship:q.
   
-  if ship:status = "SPLASHED" or ship:status = "LANDED" {
+  // make sure rocket is flying before checking if it has landed again
+  if time:seconds - launchTime > 5 and (ship:status = "SPLASHED" or ship:status = "LANDED") {
     operations:remove("ongoingOps").
     output("flight operations concluded").
     
