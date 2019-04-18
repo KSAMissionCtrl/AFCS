@@ -8,6 +8,23 @@ Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Change Log
 
+**Ascension Mk1 Block I Flight 4** (4/18/19)
+
+AFCS:
+  - Boot script now properly confirms all ship systems are ready before initiating boot
+  - Hibernation support changes listed in Data Persistence & Hibernation are now actually synced to the repo
+  - `setAbort` now alters a variabled named `launchAbort` to keep `abort` clear for use with the actual ship abort flag now that a Launch Escape System is attached
+  
+Operations:
+  - Terminal count can now be changed with a change to `launchTime` rather than being locked to a time upon boot and needing to be completely reset if L-0 changes, although the `onTerminalCount` timer will need to be adjusted
+  - Support added to fire off the LES if the fuel tank is no longer detected due to an explosion. Also takes into account whether the kick motor activates properly
+  - Re-entry step added to fire LES when through maximum pressure to test it as a braking system in emergencies
+  - Pitch profile and launch time adjusted
+  - Removed old operations loop
+  - Added proper support for getter/setter functions in logging data and accessing volatile variables
+  - Removed ascent operations no longer in line with new LVD ascent profile (engine stays at full)
+  - Detect wether landing over sea or terrain and arm floar collar accordingly
+
 **Progeny Mk6 Block I Flight 10** (3/12/19)
 
 Operations:
@@ -48,6 +65,8 @@ Operations:
   - [initialize.ks] Change to how the rocket detects it has landed after re-entry
 
 **Data Persistence & Hibernation** (12/9/18)
+
+NOTE: changes to boot.ks were not synced with this update - see commit for Ascension Mk1 Block I Flight 4
 
 AFCS:
   - [boot.ks] `load:` command has been changed to only place a file from the archive into the /cmd directory on the vessel
