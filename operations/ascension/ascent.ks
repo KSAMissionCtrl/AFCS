@@ -1,16 +1,62 @@
 // functions are in the order of flight operations
-function terminalCount {
+function lesAbortMonitor {
+
+  // can be triggered by manual abort or no longer being able to detect the fuel tank
+  if abort or not ship:partstagged("tank"):length {
+    output("LES abort triggered!").
+
+    // if there is still a decoupler, then detach it
+    if ship:partstagged("decoupler"):length decoupler:doevent("decouple").
+
+    // fire all LES rocket motors
+    lesKickMotor:doevent("activate engine").
+    wait 0.005.
+
+    // if kick motor did not fire, we need to light off one of the push motors first to angle the capsule away
+    // make sure not to light off the motor whose status we are tracking
+    if lesKickStatus <> "Nominal" {
+      lesPushMotorRight:doevent("activate engine").
+      wait 0.02.
+      lesPushMotorDw:doevent("activate engine").
+      lesPushMotorUp:doevent("activate engine").
+      lesPushMotorLeft:doevent("activate engine").
+    } else {
+      lesPushMotorRight:doevent("activate engine").
+      lesPushMotorDw:doevent("activate engine").
+      lesPushMotorUp:doevent("activate engine").
+      lesPushMotorLeft:doevent("activate engine").
+    }
+
+    // switch over to landing state and dump the tower once LES expires
+    when lesStatus = "Flame-Out!" then {
+      lesDecoupler:doevent("decouple").
+      set operations["chuteDeployAbort"] to chuteDeployAbort@.
+      set maxQ to 0.
+      output("LES tower burnout. Prepped for chute deploy").
+    }
+    operations:remove("lesAbortMonitor").
+  }
+}
+
+function onTerminalCount {
+  output("Terminal count begun, monitoring EC levels").
+  operations:remove("onTerminalCount").
+
+  // retract the service towers
+  for tower in serviceTower tower:doevent("release clamp").
+}
+function terminalCountMonitor {
 
   // until launch, ensure that EC levels are not falling faster than they should be
   set currEC to EClvl.
   if currEC - EClvl >= maxECdrain {
     setAbort(true, "EC drain is excessive at " + round(currEC - EClvl, 3) + "ec/s").
-    operations:remove("terminalCount").
+    operations:remove("terminalCountMonitor").
   }
 
   // set up for ignition at T-6 seconds
   if time:seconds >= launchTime - 6 {
-    operations:remove("terminalCount").
+    operations:remove("terminalCountMonitor").
     set operations["ignition"] to ignition@.
   }
 }
@@ -18,7 +64,7 @@ function terminalCount {
 function ignition {
 
   // ensure we have clearance to proceed with ignition
-  if not abort {
+  if not launchAbort {
 
     // ignite the engine at 10% thrust to ensure good chamber pressures
     output("Ignition").
@@ -36,7 +82,7 @@ function throttleUp {
   if engineStatus <> "Nominal" setAbort(true, "Engine ignition failure. Status: " + engineStatus).   
 
   // ensure all is still well before throttling up to launch power
-  if not abort and time:seconds >= launchTime - 3 {
+  if not launchAbort and time:seconds >= launchTime - 3 {
 
     // throttle up to and maintain a TWR of 1.2
     // take into account the mass of the engine clamp
@@ -52,7 +98,7 @@ function throttleUp {
 function launch {
 
   // last check for green light as this function was called after a 3s period
-  if not abort { 
+  if not launchAbort { 
 
     // ensure we are in fact at a 1.2 TWR
     set weight to ((ship:mass - 0.1) * (surfaceGravity/((((ship:orbit:body:radius + ship:altitude)/1000)/(ship:orbit:body:radius/1000))^2))).
@@ -73,15 +119,17 @@ function launch {
 
         // enable guidance
         // pitch over steering taken from https://www.youtube.com/watch?v=NzlM6YZ9g4w
-        // https://www.wolframalpha.com/input/?i=quadratic+fit((87,89.6),+(10000,70),+(20000,55),+(30000,43))
-        lock pitch to 1.94586E-8 * alt:radar^2 - 0.00213732 * alt:radar + 89.6957.
+        // https://www.wolframalpha.com/input/?i=quadratic+fit((87,89.6),+(10000,74),+(20000,55),+(35000,49))
+        lock pitch to 3.06411E-8 * alt:radar^2 - 0.00228399 * alt:radar + 90.8504.
         lock steering to heading(hdgHold,pitch).
 
-        // throttle up to full and head for max Q
+        // throttle up to full and head for pitch hold
+        // also enable MECO checks in case pitch hold is not reached
         set currThrottle to 1.
         lock throttle to currThrottle.
-        set operations["ascentToMaxQ"] to ascentToMaxQ@.
-        set phase to "Tower Cleared".
+        set operations["ascentToPitchHold"] to ascentToPitchHold@.
+        set operations["ascentToMeco"] to ascentToMeco@.
+        set operations["maxQmonitor"] to maxQmonitor@.
         output("Tower cleared, flight guidance enabled & throttle to full").
       }
 
@@ -94,55 +142,30 @@ function launch {
   operations:remove("launch").
 }
 
-function ascentToMaxQ {
-
-  // keep track of the current dynamic pressure to know when it peaks
-  if ship:Q > maxQ set maxQ to ship:Q.
-
-  // we've reached max Q
-  if maxQ > ship:Q {
-    output("MaxQ: " + round(ship:Q * constant:ATMtokPa, 3) + "kPa").
-    
-    // gradually decrease throttle amount as we climb to not overspeed & heat up
-    sleep("throttleBack", throttleBack@, 1, true, true).
-
-    set phase to "Max Q".
-    operations:remove("ascentToMaxQ").
-    set operations["ascentToPitchHold"] to ascentToPitchHold@.
-  }
-}
-
-function throttleBack {
-  set currThrottle to currThrottle - 0.005.
+function maxQmonitor {
+  if ship:q > maxQ set maxQ to ship:q.
 }
 
 function ascentToPitchHold {
 
-  // hold pitch at 43° and press to MECO
-  if pitch <= 43 {
-    set pitch to 43.
+  // keep track of the pitch and when it reaches 49° hold there
+  if pitch <= 49 {
+    set pitch to 49.
+    output("Max pitch reached, holding at 49 degrees").
     operations:remove("ascentToPitchHold").
-    set operations["ascentToMeco"] to ascentToMeco@.
   }
 }
 
 function ascentToMeco {
   if engineStatus = "Flame-Out!" {
+    set currThrottle to 0.
     output("Main engine burn complete").
-    sleepTimers:remove("throttleBack").
     operations:remove("ascentToMeco").
-    set phase to "Coast to Apokee".
     set operations["payloadDecouple"] to payloadDecouple@.
   }
 }
 
-// terminal count begins 2min prior to launch
-when time:seconds >= launchTime - 120 then {
-  output("Terminal count begun, monitoring EC levels").
-  set operations["terminalCount"] to terminalCount@.
-
-  // retract the service towers
-  for tower in serviceTower tower:doevent("release clamp").
-}
-
+set operations["terminalCountMonitor"] to terminalCountMonitor@.
+set operations["lesAbortMonitor"] to lesAbortMonitor@.
+sleep("onTerminalCount", onTerminalCount@, launchTime - 120, false, false).
 output("Launch/Ascent ops ready, awaiting terminal count").

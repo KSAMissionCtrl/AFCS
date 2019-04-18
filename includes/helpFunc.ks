@@ -8,9 +8,10 @@ function getAvailableThrust {
 }
 
 // keep track of abort state
+set launchAbort to false.
 function setAbort {
   parameter doAbort, msg is "undefined reasons".
-  set abort to doAbort.
+  set launchAbort to doAbort.
   output("Launch abort thrown: " + msg).
 }
 

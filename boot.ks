@@ -8,9 +8,14 @@ set varData to lexicon().
 set sleepTimers to lexicon().
 set runSafe to true.
 
-// find and store all antennas
-set commLinks to list().
-for part in ship:parts if part:hasmodule("ModuleRTAntenna") commLinks:add(part:getmodule("ModuleRTAntenna")).
+// ensure all systems ready
+wait until ship:unpacked.
+
+// get all comm parts on the ship
+set commLinks to lexicon().
+for part in ship:parts if part:hasmodule("ModuleRTAntenna") {
+  set commLinks[part:tag] to part:getmodule("ModuleRTAntenna").
+}
 
 // get a hibernation controller?
 set canHibernate to false.
@@ -115,6 +120,12 @@ function opsRun {
           if cmd[0] = "reboot" {
             archive:delete(ship:name + ".ops.ks").
             reboot.
+          } else
+
+          // save all the current volatile data
+          // WARNING!! Destroys delegate references. This should only be used as an option prior to reboot command
+          if cmd[0] = "save" {
+            writeToMemory().
           } else output("unknown command " + cmd[0] + ":" + cmd[1]).
         }
         set runSafe to true.
@@ -178,6 +189,18 @@ function opsRun {
   }
 }
 
+// serialize data we want to preserve between power sessions
+function writeToMemory{
+
+  // sanitize the lexicons to remove any delegates
+  for var in varData:values if var:typename = "UserDelegate" set var to "null".
+  for op in operations:values if op:typename = "UserDelegate" set op to "null".
+  for timer in sleepTimers:values if timer:typename = "UserDelegate" set timer to "null".
+  writejson(varData, "/mem/varData.json").
+  writejson(operations, "/mem/opsData.json").
+  writejson(sleepTimers, "/mem/timerData.json").
+}
+
 // create wait timers without pausing code operation
 function sleep {
   parameter name.
@@ -214,8 +237,28 @@ function commStatus {
 // enable/disable comms
 function setCommStatus {
   parameter connection.
-  if connection and not addons:rt:hasconnection(ship) for comms in commLinks comms:doevent("Activate").
-  else if not connection and addons:rt:hasconnection(ship) for comms in commLinks comms:doevent("Deactivate").
+  parameter tag is "all".
+
+  // turning of every comm device or just a specific one?
+  if tag = "all" {
+    for comms in commLinks:values if comms:hasevent(connection) comms:doevent(connection).
+  } else {
+    if commLinks[tag]:hasevent(connection) commLinks[tag]:doevent(connection).
+  }
+}
+
+// check for any active comms
+function getCommStatus {
+  set status to false.
+  for comms in commLinks:values if comms:hasevent("Deactivate") set status to true.
+  return status.
+}
+
+// see whether we are currently in range of KSC
+function commCheck {
+  parameter tag.
+  if getter("commRanges")[tag] < (kerbin:distance-kerbin:radius) return false.
+  else return true.
 }
 
 // define a variable with this value only if it doesn't already exist
@@ -230,7 +273,7 @@ function setter {
   parameter varName.
   parameter value is "killmeplzkthxbye".
   if value = "killmeplzkthxbye" and varData:haskey(varName) varData:remove(varName).
-  else if value <> "killmeplzkthxbye" set varData[varName] to value.
+  else set varData[varName] to value.
 }
 
 // get the value of a variable
@@ -250,15 +293,13 @@ function hibernate {
   if canHibernate {
 
     // set comms as requested
-    setCommStatus(comms).
+    if not comms setCommStatus("Deactivate").
 
     // define the file that will run once after coming out of hibernation
     setter("wakeFile", wakeFile).
 
     // save all the current volatile data
-    writejson(varData, "/mem/varData.json").
-    writejson(operations, "/mem/opsData.json").
-    writejson(sleepTimers, "/mem/timerData.json").
+    writeToMemory().
 
     // set and activate the timer
     hibernateCtrl:setfield("seconds", duration).
@@ -277,6 +318,7 @@ function reqDirCheck {
   if not core:volume:exists("/mem") core:volume:createdir("/mem").
   if not core:volume:exists("/ops") core:volume:createdir("/ops").
   if not core:volume:exists("/cmd") core:volume:createdir("/cmd").
+  if not core:volume:exists("/includes") core:volume:createdir("/includes").
 }
 
 // loads a file from the command folder for running when the computer awakens or is reloaded
@@ -307,7 +349,7 @@ function runOpsFile {
 if addons:rt:haskscconnection(ship) {
   if archive:exists(ship:name + ".boot.ks") {
     print "new system boot file received".
-    movepath("0:" + ship:name + ".boot.ks", "boot/boot.ks").
+    movepath("0:" + ship:name + ".boot.ks", "/boot/boot.ks").
     wait 1.
     reboot.
   }
@@ -320,46 +362,65 @@ if addons:rt:haskscconnection(ship) {
 }
 
 // run what dependencies we have stored
-for includeFile in core:volume:open("/includes"):list:values runpath("/includes/" + includeFile).
+for includesFile in core:volume:open("/includes"):list:values runpath("/includes/" + includesFile).
 
 // ensure required directories exist
 reqDirCheck().
 
 // load any persistent data and operations
 if core:volume:exists("/mem/varData.json") set varData to readjson("/mem/varData.json").
+if core:volume:exists("/mem/opsData.json") set operations to readjson("/mem/opsData.json").
+if core:volume:exists("/mem/timerData.json") set sleepTimers to readjson("/mem/timerData.json").
 if core:volume:open("/ops"):size {
   output("loading onboard operations").
   for opsFile in core:volume:open("/ops"):list:values runpath("/ops/" + opsFile).
   output("onboard operations executed").
 }
-if core:volume:exists("/mem/opsData.json") set operations to readjson("/mem/opsData.json").
-if core:volume:exists("/mem/timerData.json") set sleepTimers to readjson("/mem/timerData.json").
 
 // initial persistent variable definitions
 declr("startupUT", time:seconds).
 declr("lastDay", -1).
+declr("commRanges", lexicon()).
+
+// find and store all comm ranges if we haven't already
+if not getter("commRanges"):length {
+  for comm in commLinks:keys {
+
+    // turn the antenna on if needed so we can get its range
+    set deactivate to false.
+    if commLinks[comm]:hasevent("Activate") {
+      commLinks[comm]:doevent("Activate").
+      set deactivate to true.
+      wait 0.001.
+    }
+
+    // store the antenna range in meters
+    if commLinks[comm]:hasfield("Dish range") set rangeInfo to commLinks[comm]:getfield("Dish range").
+    if commLinks[comm]:hasfield("Omni range") set rangeInfo to commLinks[comm]:getfield("Omni range").
+    if rangeInfo:contains("Km") set rangeScale to 1000.
+    if rangeInfo:contains("Mm") set rangeScale to 1000000.
+    if rangeInfo:contains("Gm") set rangeScale to 1000000000.
+    set range to (rangeInfo:substring(0, (rangeInfo:length-2)):tonumber())*rangeScale.
+
+    // turn the comm back off if needed
+    if deactivate commLinks[comm]:doevent("Deactivate").
+
+    // list the comm unit
+    getter("commRanges"):add(comm, range).
+  } 
+}
 
 // date stamp the log if this is a different day then update the day
 if getter("lastDay") <> time:day stashmit("[" + time:calendar + "]").
 setter("lastDay", time:day).
 
 // are any comms active?
-set commsOnline to false.
-for comms in commLinks {
-  if comms:hasevent("Deactivate") {
-
-    // get initial signal status then monitor it
-    if addons:rt:haskscconnection(ship) {
-      output("KSC link acquired").
-      when not addons:rt:haskscconnection(ship) then commStatus().
-    } else {
-      output("KSC link not acquired").
-      when addons:rt:haskscconnection(ship) then commStatus().
-    }
-    set commsOnline to true.
+if getCommStatus() {
+  if addons:rt:haskscconnection(ship) {
+    output("KSC link acquired").
+    when not addons:rt:haskscconnection(ship) then commStatus().
   }
-}
-if not commsOnline when addons:rt:haskscconnection(ship) then commStatus().
+} else when addons:rt:haskscconnection(ship) then commStatus().
 
 output("System boot complete").
 
