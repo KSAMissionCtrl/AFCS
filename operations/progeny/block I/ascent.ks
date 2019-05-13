@@ -41,6 +41,12 @@ function launch {
     
       // setup some triggers, nested so only a few are running at any given time
       when maxQ > ship:q then output("MaxQ: " + round(ship:Q * constant:ATMtokPa, 3) + "kPa").
+      when ship:altitude > 45000 then {
+        for fairing in fairings {
+          fairing:doevent("decouple").
+        }
+        output("Payload fairing jettison").
+      }
       when ship:apoapsis > 70000 then {
         output("We are going to space!").
         when ship:altitude >= 70000 then {

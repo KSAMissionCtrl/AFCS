@@ -1,8 +1,10 @@
-set payload1 to ship:partstagged("gooLow")[0]:getmodule("ModuleScienceExperiment").
-set payload2 to ship:partstagged("gooHigh")[0]:getmodule("ModuleScienceExperiment").
+set payload1 to ship:partstagged("iontrap")[0]:getmodule("ModuleScienceExperiment").
+set payload2 to ship:partstagged("radsense")[0]:getmodule("ModuleScienceExperiment").
 
 function runScience {
-  payload1:doevent("observe mystery goo").
-  when ship:altitude >= 350000 then { payload2:doevent("observe mystery goo"). }
+  payload1:doevent("log charged particles").
+  when ship:altitude >= 400000 then { 
+    payload1:doevent("log charged particles").
+  }
 }
 output("science instruments ready").

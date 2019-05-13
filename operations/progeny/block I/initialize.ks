@@ -5,7 +5,7 @@ set stageCountdown to 0.
 set chuteSafeSpeed to 490.
 set chuteSpeed to 0.
 set phase to "Stage One Ascent".
-set launchTime to 78675000.
+set launchTime to 84112800.
 set maxECdrain to 1.
 set logInterval to 1.
 set pitchLimit to 1.5.
@@ -17,6 +17,7 @@ set currTime to floor(time:seconds).
 lock stageOne to ship:partstagged("srb1")[0]:getmodule("ModuleEnginesFX"):getfield("status").
 lock stageTwo to ship:partstagged("srb2")[0]:getmodule("ModuleEnginesFX"):getfield("status").
 lock stageThree to ship:partstagged("lfo1")[0]:getmodule("ModuleEnginesFX"):getfield("status").
+lock radlvl to ship:partstagged("radsense")[0]:getmodule("Sensor"):getfield("Radiation").
 
 // get parts now so searching doesn't hold up main program execution
 set srb1 to ship:partstagged("srb1")[0]:getmodule("ModuleEnginesFX").
@@ -39,6 +40,10 @@ set airbrakes to list(
   ship:partstagged("airbrake")[0]:getmodule("ModuleAeroSurface"),
   ship:partstagged("airbrake")[1]:getmodule("ModuleAeroSurface"),
   ship:partstagged("airbrake")[2]:getmodule("ModuleAeroSurface")
+).
+set fairings to list(
+  ship:partstagged("fairing")[0]:getmodule("ModuleDecouple"),
+  ship:partstagged("fairing")[1]:getmodule("ModuleDecouple")
 ).
 
 // used for anything to be done continuously after launch
@@ -76,6 +81,12 @@ function ongoingOps {
 lock throttle to 1.
 
 // add any custom logging fields, then call for header write
+set getter("addlLogData")["Rad/hr"] to {
+  if radlvl <> "nominal" {
+    set radlvl to radlvl:split(" ")[0].
+  }
+  return radlvl.
+}.
 initLog().
 
 output("Vessel boot up").
