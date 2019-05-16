@@ -8,7 +8,7 @@ Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Change Log
 
-**Ascension Mk1 Block I Flight 4** (5/16/19)
+**Ascension Mk1 Flight 5** (5/16/19)
 
 Operations:
   - Trigger added to activate LES past 18.5km ASL
