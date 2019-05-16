@@ -8,6 +8,14 @@ Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Change Log
 
+**Progeny Mk6 Block I Flight 11** (5/14/19)
+
+Operations:
+  - Routine to detach fairings at 45km
+  - Launch time update
+  - Science instruments updated
+  - Radiation logging enabled
+
 **Ascension Mk1 Block I Flight 4** (4/18/19)
 
 AFCS:
