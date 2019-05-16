@@ -8,6 +8,14 @@ Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Change Log
 
+**Ascension Mk1 Block I Flight 4** (5/16/19)
+
+Operations:
+  - Trigger added to activate LES past 18.5km ASL
+  - All operations and locked variables related to the lifter stage are ended/cleared upon capsule sep
+  - Data logging now begins at ignition instead of lift off
+  - New launch time
+
 **Progeny Mk6 Block I Flight 11** (5/14/19)
 
 Operations:
