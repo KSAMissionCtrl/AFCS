@@ -5,6 +5,13 @@ function lesAbortMonitor {
   if abort or not ship:partstagged("tank"):length {
     output("LES abort triggered!").
 
+    // stop any ascent operations and remove locked variables related to lower stages
+    operations:remove("maxQmonitor").
+    operations:remove("ascentToPitchHold").
+    operations:remove("ascentToMeco").
+    set engineStatus to 0.
+    set engineThrust to 0.
+    
     // if there is still a decoupler, then detach it
     if ship:partstagged("decoupler"):length decoupler:doevent("decouple").
 
@@ -48,9 +55,9 @@ function onTerminalCount {
 function terminalCountMonitor {
 
   // until launch, ensure that EC levels are not falling faster than they should be
-  set currEC to EClvl.
-  if currEC - EClvl >= maxECdrain {
-    setAbort(true, "EC drain is excessive at " + round(currEC - EClvl, 3) + "ec/s").
+  set currEC to ship:electriccharge.
+  if currEC - ship:electriccharge >= maxECdrain {
+    setAbort(true, "EC drain is excessive at " + round(currEC - ship:electriccharge, 3) + "ec/s").
     operations:remove("terminalCountMonitor").
   }
 
@@ -70,6 +77,10 @@ function ignition {
     output("Ignition").
     engine:doevent("activate engine").
 
+    // begin telemetry logging with an intial entry followed by one every second
+    logData().
+    sleep("datalogger", logData@, 1, true, true).
+      
     // pause a sec to allow ignition
     sleep("throttleUp", throttleUp@, 1, true, false).
   }
@@ -107,10 +118,6 @@ function launch {
       // disengage engine clamp
       stage.
       output("Launch!").
-      
-      // begin telemetry logging with an intial entry followed by one every second
-      logData().
-      sleep("datalogger", logData@, 1, true, true).
       
       // wait until we've cleared the service towers (which stand 8.1m tall)
       // this is so the pad and engine clamp are not damaged by engine exhaust

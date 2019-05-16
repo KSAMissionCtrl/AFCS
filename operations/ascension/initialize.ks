@@ -1,7 +1,7 @@
 // initialize variables
 set chuteSpeed to 0.
 set chuteSafeSpeed to 490.
-set launchTime to 81879120.
+set launchTime to 84304080.
 set maxECdrain to 1.
 set currThrottle to 0.1.
 set logInterval to 1.
@@ -31,33 +31,8 @@ set serviceTower to list(
   ship:partstagged("tower")[0]:getmodule("LaunchClamp"),
   ship:partstagged("tower")[1]:getmodule("LaunchClamp")
 ).
-for resCG in resList { 
-  if resCG:name = "coldgas" { 
-    lock coldgasLvl to resCG:amount. 
-    break.
-  }
-}
 
 // add any custom logging fields, then call for header write and setup log call
-set getter("addlLogData")["Cold Gas (u)"] to {
-  return coldgasLvl.
-}.
-set getter("addlLogData")["Payload Internal (k)"] to {
-  return ship:partstagged("capsule")[0]:getmodule("HotSpotModule"):getfield("Temp [I]"):split(" / ")[0].
-}.
-set getter("addlLogData")["Payload Surface (k)"] to {
-  return ship:partstagged("capsule")[0]:getmodule("HotSpotModule"):getfield("Temp [S]"):split(" / ")[0].
-}.
-set getter("addlLogData")["Heat Shield Internal (k)"] to {
-  if ship:partstagged("heatshield"):length {
-    return ship:partstagged("heatshield")[0]:getmodule("HotSpotModule"):getfield("Temp [I]"):split(" / ")[0].
-  } else return "N/A".
-}.
-set getter("addlLogData")["Heat Shield Surface (k)"] to {
-  if ship:partstagged("heatshield"):length {
-    return ship:partstagged("heatshield")[0]:getmodule("HotSpotModule"):getfield("Temp [S]"):split(" / ")[0].
-  } else return "N/A".
-}.
 initLog().
 function logData {
   logTlm(floor(time:seconds) - launchTime).
@@ -65,6 +40,7 @@ function logData {
 
 // setup some notification triggers, nested so only a few are running at any given time
 when maxQ > ship:q then output("MaxQ: " + round(ship:Q * constant:ATMtokPa, 3) + "kPa @ " + round(ship:altitude/1000, 3) + "km").
+when ship:altitude > 18500 then abort on.
 when ship:orbit:apoapsis > 70000 then {
   output("We are going to space!").
   when ship:altitude >= 70000 then {
