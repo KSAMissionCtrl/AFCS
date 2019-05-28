@@ -8,6 +8,18 @@ Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Change Log
 
+**Ascension Mk1 Flight 6** (5/28/19)
+
+Operations:
+  - Terminal count monitoring no longer processes until terminal count begins
+  - Launch time changes easier to do without needing system reboot
+  - Ascent profile tweaked to better match ability of guidance system to follow it
+  - Final pitch hold changed from 49° to 48°
+  - Ascent guidance steering unlock taken out of trigger and placed in function to hopefully be executed properly this time
+  - Initial pitch off pad decreased to further reduce possibility of gimbal lock for roll to heading after tower clear
+  - Abort trigger from previous LES test removed
+  - Added routine to fire retrothrusters in LES after re-entry shock wears off
+
 **Ascension Mk1 Flight 5** (5/16/19)
 
 Operations:
