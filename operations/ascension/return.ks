@@ -1,3 +1,13 @@
+function chuteDeploy {
+
+  // keep track of speed and altitude
+  // release chute as soon as it's safe, or as last-ditch attempt if below 2km
+  if ship:velocity:surface:mag < chuteSafeSpeed or alt:radar < 2000 {
+    retroThrusterFire().
+    operations:remove("chuteDeploy").
+  }
+}
+
 function retroThrusterFire {
 
   // put on the brakes
@@ -7,24 +17,24 @@ function retroThrusterFire {
     lesPushMotorDw:doevent("activate engine").
     lesPushMotorUp:doevent("activate engine").
     lesPushMotorLeft:doevent("activate engine").
-    when lesStatus = "Flame-Out!" then {
-      output("Retro fire complete @ " + ship:velocity:surface:mag).
-      lesKickMotor:doevent("activate engine").
-      lesDecoupler:doevent("decouple").
-    }
-  } else output("LES tower not present for retro-thrust").
-  set operations["chuteDeploy"] to chuteDeploy@.
-}
-
-function chuteDeploy {
-
-  // keep track of speed and altitude
-  // release chute as soon as it's safe, or as last-ditch attempt if below 2km
-  if ship:velocity:surface:mag < chuteSafeSpeed or alt:radar < 2000 {
+    set operations["popChute"] to popChute@.
+  } else {
+    output("LES tower not present for retro-thrust").
     chute:doevent("deploy chute").
     output("Initial chute deploy triggered @ " + round(ship:altitude/1000, 3) + "km").
     set operations["onFullDeploy"] to onFullDeploy@.
-    operations:remove("chuteDeploy").
+  }
+  operations:remove("retroThrusterFire").
+}
+
+function popChute {
+  if lesStatus = "Flame-Out!" {
+    output("Retro fire complete @ " + ship:velocity:surface:mag).
+    lesDecoupler:doevent("decouple").
+    chute:doevent("deploy chute").
+    output("Initial chute deploy triggered @ " + round(ship:altitude/1000, 3) + "km").
+    set operations["onFullDeploy"] to onFullDeploy@.
+    operations:remove("popChute").
   }
 }
 

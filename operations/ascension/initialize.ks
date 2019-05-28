@@ -1,13 +1,13 @@
 // initialize variables
 set chuteSpeed to 0.
 set chuteSafeSpeed to 490.
-set launchTime to 84304080.
 set maxECdrain to 1.
 set currThrottle to 0.1.
 set logInterval to 1.
 set maxQ to 0.
-set hdgHold to 45.
-set pitch to 89.99.
+set hdgHold to 53.
+set pitch to 89.855.
+declr("launchTime", 85321680).
 
 // keep track of part status
 lock engineStatus to ship:partstagged("lfo")[0]:getmodule("ModuleEnginesFX"):getfield("status").
@@ -33,19 +33,39 @@ set serviceTower to list(
 ).
 
 // add any custom logging fields, then call for header write and setup log call
+set getter("addlLogData")["Total Fuel (u)"] to {
+  return ship:liquidfuel + ship:oxidizer.
+}.
+set getter("addlLogData")["Cold Gas (u)"] to {
+  return ship:coldgas.
+}.
+set getter("addlLogData")["Payload Internal (k)"] to {
+  return ship:partstagged("capsule")[0]:getmodule("HotSpotModule"):getfield("Temp [I]"):split(" / ")[0].
+}.
+set getter("addlLogData")["Payload Surface (k)"] to {
+  return ship:partstagged("capsule")[0]:getmodule("HotSpotModule"):getfield("Temp [S]"):split(" / ")[0].
+}.
+set getter("addlLogData")["Heat Shield Internal (k)"] to {
+  if ship:partstagged("heatshield"):length {
+    return ship:partstagged("heatshield")[0]:getmodule("HotSpotModule"):getfield("Temp [I]"):split(" / ")[0].
+  } else return "N/A".
+}.
+set getter("addlLogData")["Heat Shield Surface (k)"] to {
+  if ship:partstagged("heatshield"):length {
+    return ship:partstagged("heatshield")[0]:getmodule("HotSpotModule"):getfield("Temp [S]"):split(" / ")[0].
+  } else return "N/A".
+}.
 initLog().
 function logData {
-  logTlm(floor(time:seconds) - launchTime).
+  logTlm(floor(time:seconds) - getter("launchTime")).
 }
 
 // setup some notification triggers, nested so only a few are running at any given time
 when maxQ > ship:q then output("MaxQ: " + round(ship:Q * constant:ATMtokPa, 3) + "kPa @ " + round(ship:altitude/1000, 3) + "km").
-when ship:altitude > 18500 then abort on.
 when ship:orbit:apoapsis > 70000 then {
   output("We are going to space!").
   when ship:altitude >= 70000 then {
     output("Space reached!").
-    unlock steering.
     when ship:verticalspeed <= 0 then {
       output("Apokee achieved @ " + round(ship:altitude/1000, 3) + "km").
       when ship:altitude <= 70000 then {
@@ -53,9 +73,9 @@ when ship:orbit:apoapsis > 70000 then {
         set maxQ to 0.
         rcs off.
         sas off.
+        set operations["chuteDeploy"] to chuteDeploy@.
         when maxQ > ship:q then {
           output("MaxQ: " + round(ship:Q * constant:ATMtokPa, 3) + "kPa @ " + round(ship:altitude/1000, 3) + "km").
-          retroThrusterFire().
         }
       }
     }

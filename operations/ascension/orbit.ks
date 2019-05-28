@@ -2,6 +2,7 @@ function payloadDecouple {
   if ship:altitude >= 100000 {
     decoupler:doevent("decouple").
     sleep("pushAway", pushAway@, 1, true, false).
+    operations:remove("lesAbortMonitor").
     operations:remove("payloadDecouple").
     output("Capsule release @ 100km").
   }

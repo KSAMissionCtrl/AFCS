@@ -47,11 +47,13 @@ function lesAbortMonitor {
 
 function onTerminalCount {
   output("Terminal count begun, monitoring EC levels").
+  set operations["terminalCountMonitor"] to terminalCountMonitor@.
   operations:remove("onTerminalCount").
 
   // retract the service towers
   for tower in serviceTower tower:doevent("release clamp").
 }
+
 function terminalCountMonitor {
 
   // until launch, ensure that EC levels are not falling faster than they should be
@@ -62,7 +64,7 @@ function terminalCountMonitor {
   }
 
   // set up for ignition at T-6 seconds
-  if time:seconds >= launchTime - 6 {
+  if time:seconds >= getter("launchTime") - 6 {
     operations:remove("terminalCountMonitor").
     set operations["ignition"] to ignition@.
   }
@@ -93,7 +95,7 @@ function throttleUp {
   if engineStatus <> "Nominal" setAbort(true, "Engine ignition failure. Status: " + engineStatus).   
 
   // ensure all is still well before throttling up to launch power
-  if not launchAbort and time:seconds >= launchTime - 3 {
+  if not launchAbort and time:seconds >= getter("launchTime") - 3 {
 
     // throttle up to and maintain a TWR of 1.2
     // take into account the mass of the engine clamp
@@ -102,7 +104,7 @@ function throttleUp {
 
     // move on to launch
     operations:remove("throttleUp").
-    sleep("launch", launch@, launchTime, false, false).
+    sleep("launch", launch@, getter("launchTime"), false, false).
   }
 }
 
@@ -126,8 +128,8 @@ function launch {
 
         // enable guidance
         // pitch over steering taken from https://www.youtube.com/watch?v=NzlM6YZ9g4w
-        // https://www.wolframalpha.com/input/?i=quadratic+fit((87,89.6),+(10000,74),+(20000,55),+(35000,49))
-        lock pitch to 3.06411E-8 * alt:radar^2 - 0.00228399 * alt:radar + 90.8504.
+        // https://www.wolframalpha.com/input/?i=quadratic+fit((82,89.85),+(5000,81),+(10000,72),+(20000,59),+(30000,51),+(40000,48))
+        lock pitch to 2.51091E-8 * ship:altitude^2 - 0.00206121 * ship:altitude + 90.2484.
         lock steering to heading(hdgHold,pitch).
 
         // throttle up to full and head for pitch hold
@@ -156,9 +158,9 @@ function maxQmonitor {
 function ascentToPitchHold {
 
   // keep track of the pitch and when it reaches 49° hold there
-  if pitch <= 49 {
-    set pitch to 49.
-    output("Max pitch reached, holding at 49 degrees").
+  if pitch <= 48 {
+    set pitch to 48.
+    output("Max pitch reached, holding at 48 degrees").
     operations:remove("ascentToPitchHold").
   }
 }
@@ -166,13 +168,13 @@ function ascentToPitchHold {
 function ascentToMeco {
   if engineStatus = "Flame-Out!" {
     set currThrottle to 0.
+    unlock steering.
     output("Main engine burn complete").
     operations:remove("ascentToMeco").
     set operations["payloadDecouple"] to payloadDecouple@.
   }
 }
 
-set operations["terminalCountMonitor"] to terminalCountMonitor@.
 set operations["lesAbortMonitor"] to lesAbortMonitor@.
-sleep("onTerminalCount", onTerminalCount@, launchTime - 120, false, false).
+sleep("onTerminalCount", onTerminalCount@, getter("launchTime") - 120, false, false).
 output("Launch/Ascent ops ready, awaiting terminal count").
