@@ -22,6 +22,9 @@ set canHibernate to false.
 if (ship:partstagged("hibernationCtrl"):length) {
   set hibernateCtrl to ship:partstagged("hibernationCtrl")[0]:getmodule("Timer").
   set canHibernate to true.
+  if ship:partstagged("cpu")[0]:getmodule("ModuleGenerator"):hasevent("Activate CPU") {
+    ship:partstagged("cpu")[0]:getmodule("ModuleGenerator"):doevent("Activate CPU").
+  }
 }
 
 ////////////
@@ -43,23 +46,41 @@ function opsRun {
         until not opLine:next  {
           set cmd to opLine:value:split(":").
 
-          // load a command file from KSC to the onboard disk
+          // load a command file or folder of files from KSC to the onboard disk
           if cmd[0] = "load" {
-            if archive:exists(cmd[1] + ".ks") {
 
-              // if we are loading from a directory on the archive, only use the filename
-              if cmd[1]:contains("/") {
-                set copyName to cmd[1]:split("/").
-                set copyName to copyName[copyName:length-1].
-              } else set copyName to cmd[1].
-              copypath("0:" + cmd[1] + ".ks", "/cmd/" + copyName + ".ks").
-              output("Instruction onload complete for " + copyName).
-            } else {
-              output("Could not find " + cmd[1]).
+            // file?
+            if not cmd[1]:endswith("/") {
+              if archive:exists(cmd[1] + ".ks") {
+
+                // if we are loading from a directory on the archive, only use the filename
+                if cmd[1]:contains("/") {
+                  set copyName to cmd[1]:split("/").
+                  set copyName to copyName[copyName:length-1].
+                } else set copyName to cmd[1].
+                copypath("0:" + cmd[1] + ".ks", "/cmd/" + copyName + ".ks").
+                output("Instruction onload complete for " + copyName).
+              } else {
+                output("Could not find file " + cmd[1]).
+              }
+            }
+
+            // folder
+            else {
+              if archive:exists(cmd[1]:remove(cmd[1]:length-1, 1)) {
+                for file in archive:open(cmd[1]:remove(cmd[1]:length-1, 1)):list:values {
+
+                  // only copy if this is a file not a folder
+                  if file:isfile copypath("0:" + cmd[1] + file:name, "/cmd/" + file:name).
+                }
+                output("Instruction onload complete for folder " + cmd[1]:split("/")[cmd[1]:split("/"):length-2]).
+              } else {
+                output("Could not find directory " + cmd[1]:remove(cmd[1]:length-1, 1)).
+              }
             }
           } else
 
-          // run a file that we want to remain running even after reboots
+          // run a stored file that we want to remain running even after reboots
           if runSafe and cmd[0] = "run" {
 
             // confirm that this is an actual file. If it is not, ignore all further run commands
@@ -80,13 +101,27 @@ function opsRun {
             }
           } else 
 
-          // run a file that we only want to execute this once
+          // run a stored file that we only want to execute this wake period
           if cmd[0] = "cmd" {
             if core:volume:exists("/cmd/" + cmd[1] + ".ks") {
               runpath("/cmd/" + cmd[1] + ".ks").
               output("Command load complete for " + cmd[1]).
             }
             else output("Could not find /cmd/" + cmd[1]).
+          } else
+
+          // run a file that we only want to execute once from the archive and not store to run again
+          if cmd[0] = "exe" {
+            if archive:exists(cmd[1] + ".ks") {
+              if cmd[1]:contains("/") {
+                set copyName to cmd[1]:split("/").
+                set copyName to copyName[copyName:length-1].
+              } else set copyName to cmd[1].
+              runpath("0:" + cmd[1] + ".ks").
+              output("Instruction execution complete for " + copyName).
+            } else {
+              output("Could not find " + cmd[1]).
+            }
           } else
 
           // delete a file
@@ -286,7 +321,7 @@ function getter {
 // place the command probe into a state of minimum power
 function hibernate {
   parameter wakefile.
-  parameter duration.
+  parameter duration is 0.
   parameter comms is false.
 
   // only proceed if hibernation is available
@@ -301,10 +336,12 @@ function hibernate {
     // save all the current volatile data
     writeToMemory().
 
-    // set and activate the timer
-    hibernateCtrl:setfield("seconds", duration).
-    hibernateCtrl:doevent("Start Countdown").
-
+    // set and activate the timer?
+    if (duration) {
+      hibernateCtrl:setfield("seconds", duration).
+      hibernateCtrl:doevent("Start Countdown").
+    }
+    
     // switch off the cpu. Nite nite!
     output("Activating hibernation").
     ship:partstagged("cpu")[0]:getmodule("ModuleGenerator"):doevent("Hibernate CPU").

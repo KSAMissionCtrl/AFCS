@@ -5,23 +5,17 @@
 declr("launchPositionLat", ship:geoposition:lat).
 declr("launchPositionLng", ship:geoposition:lng).
 declr("addlLogData", lexicon()).
+declr("nonRechargeable", false).
+declr("bAcc", false).
+declr("fullChargeEC", ship:electriccharge).
 
-// monitor electric charge
+// how we monitor electric charge depends on whether NR batteries are used
 list resources in resList.
-set NonEClvl to 0.
-set fullChargeEC to 0.
-for resEC in resList { 
-  if resEC:name = "electriccharge" { 
-    lock EClvl to resEC:amount. 
-    set fullChargeEC to fullChargeEC + resEC:capacity.
-    break.
+for res in resList { 
+  if res:name = "electricchargenonrechargeable" {
+    setter("nonRechargeable", true).
+    setter("fullChargeEC", getter("fullChargeEC") + ship:electricchargenonrechargeable).
   }
-}
-for resNonEC in resList { 
-  if resNonEC:name = "electricchargenonrechargeable" { 
-    lock NonEClvl to resNonEC:amount. 
-    set fullChargeEC to fullChargeEC + resNonEC:capacity.
-  } 
 }
 
 ////////////
@@ -55,6 +49,17 @@ function initLog {
 
   // create the default CSV headers
   set header to "UT,MET (s),Heading,Pitch,Roll,Dynamic Pressure - Q (kPa),Mass (t),Angle of Attack,Altitude (m),Latitude,Longitude,Apoapsis (m),Periapsis (m),Inclination,Surface Velocity (m/s),Orbital Velocity (m/s),Current Thrust (kN),Available Thrust (kN),Gravity,Distance Downrange (m),Throttle,Electric Charge,EC/Capacity".
+
+  // add GForce if sensor is installed
+  list sensors in senselist.
+  for sensor in senselist {
+    if sensor:type = "ACC" {
+      lock acc to sensor.
+      setter("bAcc", true).
+      if not sensor:active sensor:toggle().
+    }
+  }
+  if (getter("bAcc")) set header to header + ",G Force".
   
   // add any additional headers?
   if getter("addlLogData"):length {
@@ -88,6 +93,11 @@ function logTlm {
     Set RollFactor to 0.
   }
   Set NEW_vertical_AOA to vertical_aoa()*RollFactor.
+
+  // get current EC values
+  set EClvl to ship:electriccharge.
+  if getter("nonRechargeable") set ECNRlvl to ship:electricchargenonrechargeable.
+  else set ECNRlvl to 0.
   
   // log all the default data
   set datalog to floor(time:seconds) + "," +
@@ -111,9 +121,12 @@ function logTlm {
                  grav + "," +
                  circle_distance(latlng(getter("launchPositionLat"),getter("launchPositionLng")), ship:geoposition, ship:orbit:body:radius) + "," +
                  (throttle*100) + "%," +
-                 round(EClvl+NonEClvl, 2) + "," + 
-                 round(100 * (EClvl + NonEClvl) / fullChargeEC, 2) + "%".
-                 
+                 round(EClvl+ECNRlvl, 2) + "," + 
+                 round(100 * (EClvl + ECNRlvl) / getter("fullChargeEC"), 2) + "%".
+  
+  // add G's?
+  if (getter("bAcc")) set datalog to datalog + "," + acc:display:split(" ")[0].
+
   // add any additional data?
   if getter("addlLogData"):length {
     for data in getter("addlLogData"):values { set datalog to datalog + "," + data(). }

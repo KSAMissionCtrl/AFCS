@@ -12,7 +12,11 @@ set launchAbort to false.
 function setAbort {
   parameter doAbort, msg is "undefined reasons".
   set launchAbort to doAbort.
-  output("Launch abort thrown: " + msg).
+  if (doAbort) {
+    output("Launch abort thrown: " + msg).
+    unlock throttle.
+    unlock steering.
+  }
 }
 
 // from the KSLib
