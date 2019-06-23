@@ -8,6 +8,22 @@ Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Change Log
 
+**Progeny Mk7-A Flight 1** (6/24/19)
+
+AFCS:
+  - Automatically powers on CPU at startup if hibernation module is present
+  - `load` command can now load an entire folder of script files. Does not have option to load folders within the target folder
+  - `cmd` and `run` commnds have been noted in code to only apply to files that can be found on the spacecraft
+  - `exe` new command that runs a script file from the archive and does not store it onto the rocket for future local access with either `run` or `cmd`
+  - Hibernation mode can now be activated without setting a wake-up timer, which means it would need a command from mission control
+  - `setAbort()` no longer displays abort message when set to `false` and if `true` also unlocks steering and throttle
+  - Logger now properly handles the presence on non-rechargeable batteries in the total amount of electrical use
+  - Logger can now detect the presence of an accelerometer and log G forces if it is found
+  
+Operations:
+  - Commands added to control reaction wheel system
+  - All-new operations code based on Mk6 with additional fault-tolerance
+
 **Ascension Mk1 Flight 6** (5/28/19)
 
 Operations:
