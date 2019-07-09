@@ -1,9 +1,26 @@
-set isLanded to false.
 set chuteSafeSpeed to 470.
 set chuteSpeed to 0.
 set maxQ to 0.
-set chute to ship:partstagged("chutecomms")[0]:getmodule("RealChuteModule").
 when maxQ > ship:q then output("MaxQ: " + round(ship:Q * constant:ATMtokPa, 3) + "kPa @ " + round(ship:altitude/1000, 3) + "km").
+set chute to ship:partstagged("chutecomms")[0]:getmodule("RealChuteModule").
+
+function ascentAbort {
+  unlock stageOne.
+  unlock stageTwo.
+  
+  // wait until we've reached the top of our arc then prepare to recover
+  when ship:verticalspeed < 0 then {
+    output("Apokee achieved @ " + round(ship:altitude/1000, 3) + "km").
+    set operations["chuteDeploy"] to chuteDeploy@.
+    set maxQ to 0.
+  }
+  if ship:orbit:apoapsis > 70000 {
+    when ship:altitude > 70000 then {
+      output("Space reached!").
+      when ship:altitude <= 70000 then output("Atmospheric interface breached").
+    }
+  }
+}
 
 function chuteDeploy {
   if ship:Q > maxQ set maxQ to ship:Q.
@@ -12,12 +29,12 @@ function chuteDeploy {
   // release chute as soon as it's safe
   if ship:velocity:surface:mag < chuteSafeSpeed and ship:altitude < 30000 {
     chute:doevent("deploy chute").
-    output("Initial chute deploy triggered @ " + round(ship:altitude/1000, 3) + "km").
-    set phase to "initial Chute Deploy".
-    when abs(ship:verticalspeed) <= 13 then {
-      output("Full chute deployment @ " + round(ship:altitude, 3) + "m").
-      set phase to "Full Chute Deploy".
-      set operations["coastToLanding"] to coastToLanding@.
+    when chute:hasevent("cut chute") then {
+      output("Initial chute deploy triggered @ " + round(ship:altitude/1000, 3) + "km").
+      when abs(ship:verticalspeed) <= 13 then {
+        output("Full chute deployment @ " + round(ship:altitude, 3) + "m").
+        set operations["coastToLanding"] to coastToLanding@.
+      }
     }
     operations:remove("chuteDeploy").
   }

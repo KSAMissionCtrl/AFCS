@@ -1,24 +1,18 @@
 // functions are in the order of flight operations
 function terminalCount {
 
-  // until launch, ensure that EC levels are not falling faster than they should be
-  set currEC to EClvl.
-  if currEC - EClvl >= maxECdrain {
-    setAbort(true, "EC drain is excessive at " + round(currEC - EClvl, 3) + "ec/s").
-    operations:remove("terminalCount").
-  }
-
   // set up for ignition at T-0 seconds
   if time:seconds >= getter("launchTime") {
     operations:remove("terminalCount").
     set operations["launch"] to launch@.
+    sleepTimers:remove("monitorEcDrain").
   }
 }
 
 function launch {
 
   // check if we have launch clearance
-  if not abort { 
+  if not launchAbort { 
     stage.
     output("Launch!").
     
@@ -28,16 +22,19 @@ function launch {
     // did the boosters even fire?
     if stageOneMain = "Flame-Out!" or stageOneRadial = "Flame-Out!" {
       setAbort(true, "stage one booster ignition failure").
+      unlock throttle.
     } else {
     
       // setup some notification triggers, nested so only a few are running at any given time
       when maxQ > ship:q then output("MaxQ: " + round(ship:Q * constant:ATMtokPa, 3) + "kPa @ " + round(ship:altitude/1000, 3) + "km").
       when ship:orbit:apoapsis > 70000 then {
         output("We are going to space!").
-        setter("phase", "Apokee Spaced").
         when ship:altitude >= 70000 then {
+          for fairing in fairings {
+            fairing:doevent("decouple").
+          }
+          output("Payload fairing jettison").
           output("Space reached!").
-          setter("phase", "Space").
         }
       }
 
@@ -57,9 +54,8 @@ function stageOneRadialBoost {
 
   // drop the radial boosters once they are done
   if stageOneRadial = "Flame-Out!" {
-    set stageOneRadial to 0.
+    unlock stageOneRadial.
     output("Stage one radial boost completed. Boosters released").
-    setter("phase", "Stage One Main Boost").
     for decoupler in radDecouplers { decoupler:doevent("decouple"). }
     operations:remove("stageOneRadialBoost").
   }
@@ -68,11 +64,8 @@ function stageOneRadialBoost {
 function stageOneBoost {
   if ship:Q > maxQ set maxQ to ship:Q.
   if stageOneMain = "Flame-Out!" {
-    set stageOneMain to 0.
+    unlock stageOneMain.
     output("Stage one main boost completed, standing by to decouple. Pitch is " + round(pitch_for(ship), 3)).
-    
-    // update the phase for use when rendering the trajectory with path.ks
-    setter("phase", "Stage Two Coast").
     
     // setup to decouple the booster after one second
     sleep("stageOneDecouple", stageOneDecouple@, 1, true, false).
@@ -119,19 +112,10 @@ function stageTwoCoast {
       setAbort(true, "stage two booster ignition failure").
       operations:remove("stageTwoCoast").
       unlock throttle.
-      when ship:verticalspeed < 0 then {
-        output("Apokee achieved @ " + round(ship:altitude/1000, 3) + "km").
-        setter("phase", "Apokee").
-        runOpsFile("return").
-        when ship:altitude < 70000 then {
-          output("Atmospheric interface breached").
-          setter("phase", "Re-Entry").
-          set operations["chuteDeploy"] to chuteDeploy@.
-        }
-      }
+      runOpsFile("return").
+      ascentAbort().
     } else {
       output("Stage two boost started. Pitch is " + round(pitch_for(ship), 3) + ", vertical speed is " + round(ship:verticalspeed, 3) + "m/s").
-      setter("phase", "Stage Two Boost").
       operations:remove("stageTwoCoast").
       set operations["stageTwoBoost"] to stageTwoBoost@.
     }
@@ -141,7 +125,6 @@ function stageTwoCoast {
 function stageTwoBoostWait {
   if stageTwo = "Nominal" {
     output("Stage two boost started. Pitch is " + round(pitch_for(ship), 3) + ", vertical speed is " + round(ship:verticalspeed, 3) + "m/s").
-    setter("phase", "Stage Two Boost").
     operations:remove("stageTwoBoostWait").
     set operations["stageTwoBoost"] to stageTwoBoost@.
   }
@@ -149,9 +132,8 @@ function stageTwoBoostWait {
 
 function stageTwoBoost {
   if stageTwo = "Flame-Out!" {
-    set stageTwo to 0.
+    unlock stageTwo.
     output("Stage two boost completed, standing by to decouple").
-    setter("phase", "Stage Three Boost").
     sleep("stageTwoDecouple", stageTwoDecouple@, 1, true, false).
     operations:remove("stageTwoBoost").
     
@@ -169,25 +151,16 @@ function stageTwoDecouple {
 
 function stageThreeBoost {
   lfo1:doevent("activate engine").
-  output("Stage three boost started").
   wait 0.01.
   
   // did we get booster activation?
   if stageThree = "Flame-Out!" and throttle > 0 {
     setAbort(true, "stage three booster ignition failure").
     unlock throttle.
-    when ship:verticalspeed < 0 then {
-      output("Apokee achieved @ " + round(ship:altitude/1000, 3) + "km").
-      setter("phase", "Apokee").
-      runOpsFile("return").
-      when ship:altitude < 70000 then {
-        output("Atmospheric interface breached").
-        setter("phase", "Re-Entry").
-        set operations["chuteDeploy"] to chuteDeploy@.
-      }
-    }
+    runOpsFile("return").
+    ascentAbort().
   } else {
-    setter("phase", "Stage Three Boost").
+    output("Stage three boost started").
     set operations["beco"] to beco@.
   }
   operations:remove("stageThreeBoost").
@@ -196,7 +169,6 @@ function stageThreeBoost {
 function beco {
   if stageThree = "Flame-Out!" {
     output("Stage three boost completed").
-    setter("phase", "Stage Three Coast").
     unlock throttle.
     operations:remove("beco").
 
@@ -214,8 +186,5 @@ function beginHibernation {
 }
 
 // terminal count begins 2min prior to launch
-when time:seconds >= getter("launchTime") - 120 then {
-  output("Terminal count begun, monitoring EC levels").
-  set operations["terminalCount"] to terminalCount@.
-}
+sleep("beginTCount", beginTCount@, getter("launchTime") - 120, false, false).
 output("Launch/Ascent ops ready, awaiting terminal count").
