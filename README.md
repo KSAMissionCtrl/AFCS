@@ -8,6 +8,15 @@ Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Change Log
 
+**Progeny Mk6 Block II Flight 3** (7/9/19)
+
+Operations:
+  - Various changes made to comply with improvements made in code for recent Mk6-I and Mk7-A missions since last Mk6-II launch
+  - Hibernation length shortened from 60 to 30 seconds
+  - Hibernation activation changed to detect when rocket is within high radiation region and stay awake until it exits
+  - Exit altitude for radiation belts logged as persistent variables so the rocket can be sure to stay on prior to entrance on the way back down for accurate belt width measurement
+  - Allow upper fairings to be jettisoned
+
 **Progeny Mk7-A Flight 1** (6/24/19)
 
 AFCS:
