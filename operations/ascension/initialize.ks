@@ -6,8 +6,8 @@ set currThrottle to 0.1.
 set logInterval to 1.
 set maxQ to 0.
 set hdgHold to 53.
-set pitch to 89.855.
-declr("launchTime", 85321680).
+lock pitch to 89.6.
+declr("launchTime", 89738460).
 
 // keep track of part status
 lock engineStatus to ship:partstagged("lfo")[0]:getmodule("ModuleEnginesFX"):getfield("status").
@@ -27,10 +27,7 @@ set lesPushMotorLeft to ship:partstagged("lesPushLeft")[0]:getmodule("ModuleEngi
 set lesPushMotorRight to ship:partstagged("lesPushRight")[0]:getmodule("ModuleEnginesFX").
 set chute to ship:partstagged("chute")[0]:getmodule("RealChuteModule").
 set floatCollar to ship:partstagged("float")[0]:getmodule("CL_ControlTool").
-set serviceTower to list(
-  ship:partstagged("tower")[0]:getmodule("LaunchClamp"),
-  ship:partstagged("tower")[1]:getmodule("LaunchClamp")
-).
+set serviceTower to ship:partstagged("tower")[0]:getmodule("LaunchClamp").
 
 // add any custom logging fields, then call for header write and setup log call
 set getter("addlLogData")["Total Fuel (u)"] to {
@@ -58,28 +55,37 @@ set getter("addlLogData")["Heat Shield Surface (k)"] to {
 initLog().
 function logData {
   logTlm(floor(time:seconds) - getter("launchTime")).
+  if ship:status = "SPLASHED" or ship:status = "LANDED" sleepTimers:remove("logData").
 }
 
-// setup some notification triggers, nested so only a few are running at any given time
-when maxQ > ship:q then output("MaxQ: " + round(ship:Q * constant:ATMtokPa, 3) + "kPa @ " + round(ship:altitude/1000, 3) + "km").
-when ship:orbit:apoapsis > 70000 then {
-  output("We are going to space!").
-  when ship:altitude >= 70000 then {
-    output("Space reached!").
-    when ship:verticalspeed <= 0 then {
-      output("Apokee achieved @ " + round(ship:altitude/1000, 3) + "km").
-      when ship:altitude <= 70000 then {
-        output("Atmospheric interface breached").
-        set maxQ to 0.
-        rcs off.
-        sas off.
-        set operations["chuteDeploy"] to chuteDeploy@.
-        when maxQ > ship:q then {
-          output("MaxQ: " + round(ship:Q * constant:ATMtokPa, 3) + "kPa @ " + round(ship:altitude/1000, 3) + "km").
-        }
-      }
-    }
+// determine our max allowable EC drainage
+// totalEC / mission time in seconds
+set maxECdrain to getter("fullChargeEC") / 1536.
+
+// track EC usage per second to ensure we have enough to last the mission at launch
+function monitorEcDrain {
+  set EClvl to ship:electriccharge.
+  if getter("nonRechargeable") set ECNRlvl to ship:electricchargenonrechargeable.
+  else set ECNRlvl to 0.
+  if currEC - (EClvl+ECNRlvl) >= maxECdrain {
+    setAbort(true, "EC drain is excessive at " + round(currEC - (EClvl+ECNRlvl), 3) + "ec/s. Max drain is " + round(maxECdrain, 3) + "ec/s").
+    operations:remove("terminalCount").
+    operations:remove("monitorEcDrain").
   }
+  set currEC to EClvl+ECNRlvl.
+}
+
+// retract service tower, start doing battery drain checks and launch timing
+function beginTCount {
+  output("Terminal count begun, monitoring EC levels").
+  serviceTower:doevent("release clamp").
+  set operations["terminalCount"] to terminalCount@.
+  set EClvl to ship:electriccharge.
+  if getter("nonRechargeable") set ECNRlvl to ship:electricchargenonrechargeable.
+  else set ECNRlvl to 0.
+  set currEC to EClvl+ECNRlvl.
+  sleep("monitorEcDrain", monitorEcDrain@, 1, true, true).
+  operations:remove("beginTCount").
 }
 
 lock throttle to currThrottle.

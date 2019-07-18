@@ -9,8 +9,8 @@ function lesAbortMonitor {
     operations:remove("maxQmonitor").
     operations:remove("ascentToPitchHold").
     operations:remove("ascentToMeco").
-    set engineStatus to 0.
-    set engineThrust to 0.
+    unlock engineStatus.
+    unlock engineThrust.
     
     // if there is still a decoupler, then detach it
     if ship:partstagged("decoupler"):length decoupler:doevent("decouple").
@@ -45,28 +45,13 @@ function lesAbortMonitor {
   }
 }
 
-function onTerminalCount {
-  output("Terminal count begun, monitoring EC levels").
-  set operations["terminalCountMonitor"] to terminalCountMonitor@.
-  operations:remove("onTerminalCount").
-
-  // retract the service towers
-  for tower in serviceTower tower:doevent("release clamp").
-}
-
-function terminalCountMonitor {
-
-  // until launch, ensure that EC levels are not falling faster than they should be
-  set currEC to ship:electriccharge.
-  if currEC - ship:electriccharge >= maxECdrain {
-    setAbort(true, "EC drain is excessive at " + round(currEC - ship:electriccharge, 3) + "ec/s").
-    operations:remove("terminalCountMonitor").
-  }
+function terminalCount {
 
   // set up for ignition at T-6 seconds
   if time:seconds >= getter("launchTime") - 6 {
-    operations:remove("terminalCountMonitor").
+    operations:remove("terminalCount").
     set operations["ignition"] to ignition@.
+    sleepTimers:remove("monitorEcDrain").
   }
 }
 
@@ -84,12 +69,15 @@ function ignition {
     sleep("datalogger", logData@, 1, true, true).
       
     // pause a sec to allow ignition
-    sleep("throttleUp", throttleUp@, 1, true, false).
+    sleep("launchThrust", launchThrust@, 1, true, false).
+
+    // ensure the LES activates in the case of any troubles
+    set operations["lesAbortMonitor"] to lesAbortMonitor@.
   }
   operations:remove("ignition").
 }
 
-function throttleUp {
+function launchThrust {
 
   // check chamber pressures over the next two seconds if ignition was successful
   if engineStatus <> "Nominal" setAbort(true, "Engine ignition failure. Status: " + engineStatus).   
@@ -103,7 +91,7 @@ function throttleUp {
     lock throttle to 1.2 * (ship:mass - 0.10) * (surfaceGravity/((((ship:orbit:body:radius + ship:altitude)/1000)/(ship:orbit:body:radius/1000))^2)) / getAvailableThrust().
 
     // move on to launch
-    operations:remove("throttleUp").
+    operations:remove("launchThrust").
     sleep("launch", launch@, getter("launchTime"), false, false).
   }
 }
@@ -121,25 +109,37 @@ function launch {
       stage.
       output("Launch!").
       
+      // adjust throttle to proper TWR now that clamp is gone
+      lock throttle to 1.2 * ship:mass * (surfaceGravity/((((ship:orbit:body:radius + ship:altitude)/1000)/(ship:orbit:body:radius/1000))^2)) / getAvailableThrust().
+
       // wait until we've cleared the service towers (which stand 8.1m tall)
       // this is so the pad and engine clamp are not damaged by engine exhaust
       set launchHeight to alt:radar.
-      when alt:radar >= launchHeight + 8.1 then {
+      set operations["throttleUp"] to throttleUp@.
 
-        // enable guidance
-        // pitch over steering taken from https://www.youtube.com/watch?v=NzlM6YZ9g4w
-        // https://www.wolframalpha.com/input/?i=quadratic+fit((82,89.85),+(5000,81),+(10000,72),+(20000,59),+(30000,51),+(40000,48))
-        lock pitch to 2.51091E-8 * ship:altitude^2 - 0.00206121 * ship:altitude + 90.2484.
-        lock steering to heading(hdgHold,pitch).
+      // initial pitch over
+      lock steering to heading(hdgHold, pitch).
 
-        // throttle up to full and head for pitch hold
-        // also enable MECO checks in case pitch hold is not reached
-        set currThrottle to 1.
-        lock throttle to currThrottle.
-        set operations["ascentToPitchHold"] to ascentToPitchHold@.
-        set operations["ascentToMeco"] to ascentToMeco@.
-        set operations["maxQmonitor"] to maxQmonitor@.
-        output("Tower cleared, flight guidance enabled & throttle to full").
+      // setup some notification triggers, nested so only a few are running at any given time
+      when maxQ > ship:q then output("MaxQ: " + round(ship:Q * constant:ATMtokPa, 3) + "kPa @ " + round(ship:altitude/1000, 3) + "km").
+      when ship:orbit:apoapsis > 70000 then {
+        output("We are going to space!").
+        when ship:altitude >= 70000 then {
+          output("Space reached!").
+          when ship:verticalspeed <= 0 then {
+            output("Apokee achieved @ " + round(ship:altitude/1000, 3) + "km").
+            when ship:altitude <= 70000 then {
+              output("Atmospheric interface breached").
+              set maxQ to 0.
+              rcs off.
+              sas off.
+              set operations["chuteDeploy"] to chuteDeploy@.
+              when maxQ > ship:q then {
+                output("MaxQ: " + round(ship:Q * constant:ATMtokPa, 3) + "kPa @ " + round(ship:altitude/1000, 3) + "km").
+              }
+            }
+          }
+        }
       }
 
     // takeoff thrust failed to set
@@ -151,15 +151,36 @@ function launch {
   operations:remove("launch").
 }
 
+function throttleUp {
+  if alt:radar >= launchHeight + 8.1 {
+
+    // enable guidance
+    // pitch over steering taken from https://www.youtube.com/watch?v=NzlM6YZ9g4w
+    // https://www.wolframalpha.com/input/?i=quadratic+fit((76,89.6),+(5000,78),+(10000,69),+(20000,57),+(30000,51),+(40000,48))
+    lock pitch to 2.95304E-8 * ship:altitude^2 - 0.00218678 * ship:altitude + 88.8414.
+    lock steering to heading(hdgHold,pitch).
+
+    // throttle up to full and head for pitch hold
+    // also enable MECO checks in case pitch hold is not reached
+    lock throttle to 1.65 * ship:mass * (surfaceGravity/((((ship:orbit:body:radius + ship:altitude)/1000)/(ship:orbit:body:radius/1000))^2)) / getAvailableThrust().
+    set operations["ascentToPitchHold"] to ascentToPitchHold@.
+    set operations["ascentToMeco"] to ascentToMeco@.
+    set operations["maxQmonitor"] to maxQmonitor@.
+    output("Tower cleared, flight guidance enabled & throttle to full").
+    operations:remove("throttleUp").
+  }
+}
+
 function maxQmonitor {
   if ship:q > maxQ set maxQ to ship:q.
+  else operations:remove("maxQmonitor").
 }
 
 function ascentToPitchHold {
 
-  // keep track of the pitch and when it reaches 49° hold there
+  // keep track of the pitch and when it reaches 48° hold there
   if pitch <= 48 {
-    set pitch to 48.
+    lock pitch to 48.
     output("Max pitch reached, holding at 48 degrees").
     operations:remove("ascentToPitchHold").
   }
@@ -167,14 +188,15 @@ function ascentToPitchHold {
 
 function ascentToMeco {
   if engineStatus = "Flame-Out!" {
-    set currThrottle to 0.
+    unlock throttle.
     unlock steering.
     output("Main engine burn complete").
     operations:remove("ascentToMeco").
-    set operations["payloadDecouple"] to payloadDecouple@.
+
+    // decouple the capsule after 10s
+    sleep("payloadDecouple", payloadDecouple@, 10, true, false).
   }
 }
 
-set operations["lesAbortMonitor"] to lesAbortMonitor@.
-sleep("onTerminalCount", onTerminalCount@, getter("launchTime") - 120, false, false).
+sleep("beginTCount", beginTCount@, getter("launchTime") - 120, false, false).
 output("Launch/Ascent ops ready, awaiting terminal count").
