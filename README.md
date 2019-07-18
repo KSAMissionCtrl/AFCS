@@ -8,6 +8,14 @@ Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Change Log
 
+**Ascension Mk1 Flight 7** (7/18/19)
+
+Operations:
+  - Proper use of `unlock` to release `lock`ed variables
+  - New terminal count monitoring for better EC management prior to launch
+  - Proper LES abort and recovery integration for crewed mission
+  - Ascent triggers no longer activated until ascent is underway
+
 **Progeny Mk6 Block II Flight 3** (7/9/19)
 
 Operations:
