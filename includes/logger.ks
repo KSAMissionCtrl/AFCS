@@ -7,16 +7,42 @@ declr("launchPositionLng", ship:geoposition:lng).
 declr("addlLogData", lexicon()).
 declr("nonRechargeable", false).
 declr("bAcc", false).
-declr("fullChargeEC", ship:electriccharge).
+declr("fullChargeEC", ceiling(ship:electriccharge)).
 
 // how we monitor electric charge depends on whether NR batteries are used
 list resources in resList.
 for res in resList { 
   if res:name = "electricchargenonrechargeable" {
     setter("nonRechargeable", true).
-    setter("fullChargeEC", getter("fullChargeEC") + ship:electricchargenonrechargeable).
+    setter("fullChargeEC", getter("fullChargeEC") + ceiling(ship:electricchargenonrechargeable)).
   }
 }
+
+// taken from u/nuggreat via https://github.com/nuggreat/kOS-scripts/blob/master/logging_atm.ks
+LOCAL localBody IS SHIP:BODY.
+LOCAL localAtm IS localBody:ATM.
+LOG ("time(s),altitude(m),vel(m/s),Q(kPa),,body: " + localBody:NAME) TO logPath.
+
+
+LOCAL jPerKgK IS (8314.4598/42).  //this is ideal gas constant dived by the molecular mass of the bodies atmosphere
+LOCAL heatCapacityRatio IS 1.2.
+IF localBody = KERBIN {
+	SET jPerKgK TO (8314.4598/28.9644).
+	SET heatCapacityRatio TO 1.4.
+}
+
+LOCAL preVel IS SHIP:VELOCITY:SURFACE.
+LOCAL preTime IS TIME:SECONDS.
+LOCAL preGravVec IS localBody:POSITION - SHIP:POSITION.
+LOCAL preForeVec IS SHIP:FACING:FOREVECTOR.
+LOCAL preMass IS SHIP:MASS.
+LOCAL preDynamicP IS SHIP:Q * CONSTANT:ATMTOKPA.
+LOCAL preAtmPressure IS MAX(localAtm:ALTITUDEPRESSURE(ALTITUDE) * CONSTANT:ATMTOKPA,0.000001).
+LOCAL atmDencity IS preDynamicP / preVel:SQRMAGNITUDE.
+LOCAL atmMolarMass IS atmDencity / preAtmPressure.
+
+LOCAL burnCoeff IS 0.
+IF active_engine { SET burnCoeff TO 1.}
 
 ////////////
 // Functions
@@ -48,7 +74,7 @@ function output {
 function initLog {
 
   // create the default CSV headers
-  set header to "UT,MET (s),Heading,Pitch,Roll,Dynamic Pressure - Q (kPa),Mass (t),Angle of Attack,Altitude (m),Latitude,Longitude,Apoapsis (m),Periapsis (m),Inclination,Surface Velocity (m/s),Orbital Velocity (m/s),Current Thrust (kN),Available Thrust (kN),Gravity,Distance Downrange (m),Throttle,Electric Charge,EC/Capacity".
+  set header to "UT,MET (s),Heading,Pitch,Roll,Dynamic Pressure - Q (kPa),Drag Force (kN),Pressure (kPa),Density (kg/m^3),Drag Coefficient (m^2),Molar Mass (mg/J),Atmospheric Temperature (K),Mach (m/s),Mass (t),Angle of Attack,Altitude (m),Latitude,Longitude,Apoapsis (m),Periapsis (m),Inclination,Surface Velocity (m/s),Orbital Velocity (m/s),Current Thrust (kN),Available Thrust (kN),Gravity,Distance Downrange (m),Throttle,Electric Charge,EC/Capacity".
 
   // add GForce if sensor is installed
   list sensors in senselist.
@@ -73,7 +99,49 @@ function initLog {
 // log the telemetry data each - whatever. Calling program will decide how often to log
 function logTlm {
   parameter met.
-  
+
+  // taken from u/nuggreat via https://github.com/nuggreat/kOS-scripts/blob/master/logging_atm.ks
+  if ship:altitude < 70000 {
+    SET newTime TO TIME:SECONDS.
+    SET newAlt TO SHIP:ALTITUDE.
+    SET newDynamicP TO SHIP:Q.//is in atmospheres 
+    SET newVel TO SHIP:VELOCITY:SURFACE.
+    SET newAtmPressure TO MAX(localAtm:ALTITUDEPRESSURE(newAlt),0.0000001).
+    SET newMass TO SHIP:MASS.
+    SET newForeVec TO SHIP:FACING:FOREVECTOR.
+    SET newGravVec TO localBody:POSITION - SHIP:POSITION.
+
+    SET newAtmPressure TO newAtmPressure * CONSTANT:ATMTOKPA.
+    SET newDynamicP TO newDynamicP * CONSTANT:ATMTOKPA.
+    //SET newMass TO newMass * 1000.
+
+    SET avrPressure TO (newAtmPressure + preAtmPressure) / 2.
+    SET avrDynamicP TO (newDynamicP + preDynamicP) / 2.
+    SET avrForeVec TO ((newForeVec + preForeVec) / 2):NORMALIZED.
+    SET shipISP TO isp_at(get_active_eng(),avrPressure).
+
+    SET deltaTime TO newTime - preTime.
+    SET gravVec TO average_grav(newGravVec:MAG,newGravVec:MAG) * (newGravVec:NORMALIZED + preGravVec:NORMALIZED):NORMALIZED * deltaTime.
+    SET burnDV TO shipISP * 9.80665 * LN(preMass / newMass) * burnCoeff.
+    SET accelVec TO avrForeVec * burnDV.
+    SET dragAcc TO (newVel - (preVel + gravVec + accelVec)) / deltaTime.
+    SET dragForce TO ((newMass + preMass) / 2) * VDOT(dragAcc,avrForeVec).
+    SET atmDencity TO (avrDynamicP * 2) / ((newVel:SQRMAGNITUDE + preVel:SQRMAGNITUDE) / 2).//derived from q = d * v^2 / 2
+    SET dragCoef TO dragForce / MAX(avrDynamicP,0.0001).
+    SET atmMolarMass TO atmDencity / avrPressure.
+    SET atmTemp TO avrPressure / (jPerKgK * atmDencity).
+    SET mach TO SQRT(heatCapacityRatio * jPerKgK * atmTemp).
+    set atmDencity to atmDencity*1000.
+  } else {
+    set dragForce to "N/A".
+    set newAtmPressure to "N/A".
+    set atmDencity to "N/A".
+    set dragCoef to "N/A".
+    set atmMolarMass to "N/A".
+    set atmTemp to "N/A".
+    set mach to "N/A".
+  }
+
   // calculate the new gravity value
   set grav to surfaceGravity/((((ship:orbit:body:radius + ship:altitude)/1000)/(ship:orbit:body:radius/1000))^2).
 
@@ -106,6 +174,13 @@ function logTlm {
                  pitch_for(ship) + "," +
                  roll_for(ship) + "," +
                  (ship:Q * constant:ATMtokPa) + "," +
+                 dragForce + "," +
+                 newAtmPressure + "," +
+                 atmDencity + "," +
+                 dragCoef + "," +
+                 atmMolarMass + "," +
+                 atmTemp + "," +
+                 mach + "," +
                  ship:mass + "," +
                  NEW_vertical_AOA*-1 + "," +
                  ship:altitude + "," +
@@ -123,7 +198,7 @@ function logTlm {
                  (throttle*100) + "%," +
                  round(EClvl+ECNRlvl, 2) + "," + 
                  round(100 * (EClvl + ECNRlvl) / getter("fullChargeEC"), 2) + "%".
-  
+
   // add G's?
   if (getter("bAcc")) set datalog to datalog + "," + acc:display:split(" ")[0].
 
@@ -134,4 +209,68 @@ function logTlm {
 
   // push the new data to the log
   stashmit(datalog, ship:name + ".csv").
+
+  // taken from u/nuggreat via https://github.com/nuggreat/kOS-scripts/blob/master/logging_atm.ks
+  if ship:altitude < 70000 {
+    SET preVel TO newVel.
+    SET preTime TO newTime.
+    SET preGravVec TO newGravVec.
+    SET preForeVec TO newForeVec.
+    SET preMass TO newMass.
+    SET preDynamicP TO newDynamicP.
+    SET preAtmPressure TO newAtmPressure.
+  }
+}
+
+// taken from u/nuggreat via https://github.com/nuggreat/kOS-scripts/blob/master/logging_atm.ks
+FUNCTION average_grav {
+	PARAMETER rad1 IS SHIP:ALTITUDE,rad2 IS 0, localBody IS SHIP:BODY.
+	IF rad1 > rad2 {
+		RETURN ((localBody:MU / rad2) - (localBody:MU / rad1))/(rad1 - rad2).
+	} ELSE IF rad2 > rad1 {
+		RETURN ((localBody:MU / rad1) - (localBody:MU / rad2))/(rad2 - rad1).
+	} ELSE {
+		RETURN localBody:MU / rad1^2.
+	}
+}
+
+FUNCTION get_active_eng {
+	LOCAL engList IS LIST().
+	LIST ENGINES IN engList.
+	LOCAL returnList IS LIST().
+	FOR eng IN engList {
+		IF eng:IGNITION AND NOT eng:FLAMEOUT {
+			returnList:ADD(eng).
+		}
+	}
+	RETURN returnList.
+}
+
+FUNCTION isp_at {
+	PARAMETER engineList,curentPressure.  //curentPressure should be in KpA
+	SET curentPressure TO curentPressure * CONSTANT:KPATOATM.
+	LOCAL totalFlow IS 0.
+	LOCAL totalThrust IS 0.
+	FOR engine IN engineList {
+		LOCAL engThrust IS engine:AVAILABLETHRUSTAT(curentPressure).
+		SET totalFlow TO totalFlow + (engThrust / (engine:ISPAT(curentPressure) * 9.80665)).
+		SET totalThrust TO totalThrust + engThrust.
+	}
+	IF totalThrust = 0 {
+		RETURN 1.
+	}
+	RETURN (totalThrust / (totalFlow * 9.80665)).
+}
+
+FUNCTION active_engine {  // check for a active engine on ship
+	LOCAL engineList IS LIST().
+	LIST ENGINES IN engineList.
+	LOCAL haveEngine IS FALSE.
+	FOR engine IN engineList {
+		IF engine:IGNITION AND NOT engine:FLAMEOUT {
+			SET haveEngine TO TRUE.
+			BREAK.
+		}
+	}
+	RETURN haveEngine.
 }

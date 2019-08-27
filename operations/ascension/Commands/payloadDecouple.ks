@@ -1,10 +1,7 @@
-function payloadDecouple {
-  decoupler:doevent("decouple").
-  sleep("pushAway", pushAway@, 1, true, false).
-  operations:remove("lesAbortMonitor").
-  operations:remove("payloadDecouple").
-  output("Capsule release @ 100km").
-}
+decoupler:doevent("decouple").
+sleep("pushAway", pushAway@, 1, true, false).
+output("Capsule released").
+operations:remove("lesAbortMonitor").
 
 // maneuver straight away from the tank for 10 seconds
 function pushAway {
@@ -19,5 +16,3 @@ function endCoast {
   unlock steering.
   operations:remove("endCoast").
 }
-
-output("Orbital ops loaded").

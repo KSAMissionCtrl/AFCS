@@ -5,9 +5,10 @@ set maxECdrain to 1.
 set currThrottle to 0.1.
 set logInterval to 1.
 set maxQ to 0.
-set hdgHold to 53.
+set hdgHold to 45.
+set lastPitch to 0.
 lock pitch to 89.6.
-declr("launchTime", 89738460).
+declr("launchTime", 93180600).
 
 // keep track of part status
 lock engineStatus to ship:partstagged("lfo")[0]:getmodule("ModuleEnginesFX"):getfield("status").
@@ -75,7 +76,7 @@ function monitorEcDrain {
   set currEC to EClvl+ECNRlvl.
 }
 
-// retract service tower, start doing battery drain checks and launch timing
+// retract service tower, start doing battery drain checks, launch timing and set for control check
 function beginTCount {
   output("Terminal count begun, monitoring EC levels").
   serviceTower:doevent("release clamp").
@@ -85,6 +86,7 @@ function beginTCount {
   else set ECNRlvl to 0.
   set currEC to EClvl+ECNRlvl.
   sleep("monitorEcDrain", monitorEcDrain@, 1, true, true).
+  set operations["ctrlCheckStart"] to ctrlCheckStart@.
   operations:remove("beginTCount").
 }
 
