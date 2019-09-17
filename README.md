@@ -8,18 +8,6 @@ Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Change Log
 
-**Ascension Mk1 Flight 8** (8/28/19)
-
-AFCS:
-  - Fixed logging issue that slightly undercalculated the total amount of battery capacity at boot
-  - Added additional default logging variables for atmospheric data
-
-Operations:
-  - Decoupling the capsule is not longer a part of ascent operations and is a command file for controllers to activate when they are ready late in the mission before re-entry
-  - Command files created for deploying/retracting the science instruments
-  - Control surface movement check added to T-15s in terminal countdown
-  - Fix pitch guidance to monitor actual pitch value and ensure lock occurs when value is reached. Also accounts for calculated value not reaching target and beginning to increase
-
 **Ascension Mk1 Flight 7** (7/18/19)
 
 Operations:
