@@ -74,7 +74,7 @@ function output {
 function initLog {
 
   // create the default CSV headers
-  set header to "UT,MET (s),Heading,Pitch,Roll,Dynamic Pressure - Q (kPa),Pressure (kPa),Density (kg/m^3),Molar Mass (mg/J),Atmospheric Temperature (K),Mach (m/s),Mass (t),Angle of Attack,Altitude (m),Latitude,Longitude,Apoapsis (m),Periapsis (m),Inclination,Surface Velocity (m/s),Orbital Velocity (m/s),Current Thrust (kN),Available Thrust (kN),Gravity,Distance Downrange (m),Throttle,Electric Charge,EC/Capacity".
+  set header to "UT,MET (s),Heading,Pitch,Roll,Dynamic Pressure - Q (kPa),Drag Force (kN),Pressure (kPa),Density (kg/m^3),Drag Coefficient (m^2),Molar Mass (mg/J),Atmospheric Temperature (K),Mach (m/s),Mass (t),Angle of Attack,Altitude (m),Latitude,Longitude,Apoapsis (m),Periapsis (m),Inclination,Surface Velocity (m/s),Orbital Velocity (m/s),Current Thrust (kN),Available Thrust (kN),Gravity,Distance Downrange (m),Throttle,Electric Charge,EC/Capacity".
 
   // add GForce if sensor is installed
   list sensors in senselist.
@@ -174,8 +174,10 @@ function logTlm {
                  pitch_for(ship) + "," +
                  roll_for(ship) + "," +
                  (ship:Q * constant:ATMtokPa) + "," +
+                 dragForce + "," +
                  newAtmPressure + "," +
                  atmDencity + "," +
+                 dragCoef + "," +
                  atmMolarMass + "," +
                  atmTemp + "," +
                  mach + "," +
@@ -218,4 +220,57 @@ function logTlm {
     SET preDynamicP TO newDynamicP.
     SET preAtmPressure TO newAtmPressure.
   }
+}
+
+// taken from u/nuggreat via https://github.com/nuggreat/kOS-scripts/blob/master/logging_atm.ks
+FUNCTION average_grav {
+	PARAMETER rad1 IS SHIP:ALTITUDE,rad2 IS 0, localBody IS SHIP:BODY.
+	IF rad1 > rad2 {
+		RETURN ((localBody:MU / rad2) - (localBody:MU / rad1))/(rad1 - rad2).
+	} ELSE IF rad2 > rad1 {
+		RETURN ((localBody:MU / rad1) - (localBody:MU / rad2))/(rad2 - rad1).
+	} ELSE {
+		RETURN localBody:MU / rad1^2.
+	}
+}
+
+FUNCTION get_active_eng {
+	LOCAL engList IS LIST().
+	LIST ENGINES IN engList.
+	LOCAL returnList IS LIST().
+	FOR eng IN engList {
+		IF eng:IGNITION AND NOT eng:FLAMEOUT {
+			returnList:ADD(eng).
+		}
+	}
+	RETURN returnList.
+}
+
+FUNCTION isp_at {
+	PARAMETER engineList,curentPressure.  //curentPressure should be in KpA
+	SET curentPressure TO curentPressure * CONSTANT:KPATOATM.
+	LOCAL totalFlow IS 0.
+	LOCAL totalThrust IS 0.
+	FOR engine IN engineList {
+		LOCAL engThrust IS engine:AVAILABLETHRUSTAT(curentPressure).
+		SET totalFlow TO totalFlow + (engThrust / (engine:ISPAT(curentPressure) * 9.80665)).
+		SET totalThrust TO totalThrust + engThrust.
+	}
+	IF totalThrust = 0 {
+		RETURN 1.
+	}
+	RETURN (totalThrust / (totalFlow * 9.80665)).
+}
+
+FUNCTION active_engine {  // check for a active engine on ship
+	LOCAL engineList IS LIST().
+	LIST ENGINES IN engineList.
+	LOCAL haveEngine IS FALSE.
+	FOR engine IN engineList {
+		IF engine:IGNITION AND NOT engine:FLAMEOUT {
+			SET haveEngine TO TRUE.
+			BREAK.
+		}
+	}
+	RETURN haveEngine.
 }
