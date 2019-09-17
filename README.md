@@ -8,7 +8,33 @@ Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Change Log
 
-**Ascension Mk1 Flight 7** (7/18/19)
+**Ascension Mk1 Flight 9** (9/17/19)
+
+Repository:
+  - No longer holding operations files for multiple vehicles. You can look back at the commit history if you want to see past operations files
+  
+Operations:
+   - Cleaned up terminal count monitoring, now using less operation loops and more sleep timers to save energy by executing less instructions each tick
+   - EC drain monitoring now terminates at launch
+   - Fixed issue where MaxQ was not reported on re-entry
+   - Launch abort message for not reaching takeoff TWR now rounds off the reported TWR value
+   - When an abort is thrown prior to launch but after main engine ignition, the abort routine now ensures the engine is shut down if that wasn't already the problem
+   - Guidance code updated for planned ascent profile
+   - When reaching pitch hold the lock to set angle is done prior to reaching the target so the rocket does not overshoot due to low control authority
+
+**Ascension Mk1 Flight 8** (8/28/19)
+
+AFCS:
+  - Fixed logging issue that slightly undercalculated the total amount of battery capacity at boot
+  - Added additional default logging variables for atmospheric data
+
+Operations:
+  - Decoupling the capsule is not longer a part of ascent operations and is a command file for controllers to activate when they are ready late in the mission before re-entry
+  - Command files created for deploying/retracting the science instruments
+  - Control surface movement check added to T-15s in terminal countdown
+  - Fix pitch guidance to monitor actual pitch value and ensure lock occurs when value is reached. Also accounts for calculated value not reaching target and beginning to increase
+  
+  **Ascension Mk1 Flight 7** (7/18/19)
 
 Operations:
   - Proper use of `unlock` to release `lock`ed variables
