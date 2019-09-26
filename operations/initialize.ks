@@ -1,57 +1,71 @@
-// initialize variables
-set chuteSpeed to 0.
-set chuteSafeSpeed to 490.
-set maxECdrain to 1.
-set currThrottle to 0.1.
-set logInterval to 1.
+// initialize non-volatile variables
+set abort to false.
 set maxQ to 0.
-set hdgHold to 90.
-set lastPitch to 0.
-lock pitch to 89.6.
-declr("launchTime", 95001000).
+set hdgHold to 45.5.
+lock throttle to 1.
+set currEC to 0.
 
-// keep track of part status
-lock engineStatus to ship:partstagged("lfo")[0]:getmodule("ModuleEnginesFX"):getfield("status").
-lock engineThrust to ship:partstagged("lfo")[0]:getmodule("ModuleEnginesFX"):getfield("thrust").
-lock lesStatus to ship:partstagged("lesPushUp")[0]:getmodule("ModuleEnginesFX"):getfield("status").
-lock lesKickStatus to ship:partstagged("lesKick")[0]:getmodule("ModuleEnginesFX"):getfield("status").
+// initialize volatile variables
+declr("launchTime", 95779500).
 
-// get parts/resources now so searching doesn't hold up main program execution
-set engine to ship:partstagged("lfo")[0]:getmodule("ModuleEnginesFX").
-set decoupler to ship:partstagged("decoupler")[0]:getmodule("ModuleDecouple").
-set heatshield to ship:partstagged("heatshield")[0]:getmodule("ModuleDecouple").
-set lesDecoupler to ship:partstagged("lesTower")[0]:getmodule("ModuleDecouple").
-set lesKickMotor to ship:partstagged("lesKick")[0]:getmodule("ModuleEnginesFX").
-set lesPushMotorDw to ship:partstagged("lesPushDw")[0]:getmodule("ModuleEnginesFX").
-set lesPushMotorUp to ship:partstagged("lesPushUp")[0]:getmodule("ModuleEnginesFX").
-set lesPushMotorLeft to ship:partstagged("lesPushLeft")[0]:getmodule("ModuleEnginesFX").
-set lesPushMotorRight to ship:partstagged("lesPushRight")[0]:getmodule("ModuleEnginesFX").
-set chute to ship:partstagged("chute")[0]:getmodule("RealChuteModule").
-set floatCollar to ship:partstagged("float")[0]:getmodule("CL_ControlTool").
+// keep track of part status 
+lock stageOne to ship:partstagged("srmxl")[0]:getmodule("ModuleEnginesFX"):getfield("status").
+lock stageTwo to ship:partstagged("srml")[0]:getmodule("ModuleEnginesFX"):getfield("status").
+lock stageThree to ship:partstagged("ospray")[0]:getmodule("ModuleEnginesFX"):getfield("status").
+lock armOne to ship:partstagged("support")[0]:getmodule("modulewheeldeployment"):getfield("state").
+lock armTwo to ship:partstagged("support")[1]:getmodule("modulewheeldeployment"):getfield("state").
+lock armThree to ship:partstagged("support")[2]:getmodule("modulewheeldeployment"):getfield("state").
+
+// get parts now so searching doesn't hold up main program execution
+set srb1 to ship:partstagged("srmxl")[0]:getmodule("ModuleEnginesFX").
+set s1decoupler to ship:partstagged("s1decoupler")[0]:getmodule("ModuleDecouple").
+set s1fins to list(
+  ship:partstagged("s1fin")[0]:getmodule("Kaboom"),
+  ship:partstagged("s1fin")[1]:getmodule("Kaboom"),
+  ship:partstagged("s1fin")[2]:getmodule("Kaboom"),
+  ship:partstagged("s1fin")[3]:getmodule("Kaboom")
+).
+set srb2 to ship:partstagged("srml")[0]:getmodule("ModuleEnginesFX").
+set s2decoupler to ship:partstagged("s2decoupler")[0]:getmodule("ModuleDecouple").
+set s2fins to list(
+  ship:partstagged("s2fin")[0]:getmodule("Kaboom"),
+  ship:partstagged("s2fin")[1]:getmodule("Kaboom"),
+  ship:partstagged("s2fin")[2]:getmodule("Kaboom"),
+  ship:partstagged("s2fin")[3]:getmodule("Kaboom")
+).
+set s2finCtrl to list(
+  ship:partstagged("s2fin")[0]:getmodule("FARcontrollablesurface"),
+  ship:partstagged("s2fin")[1]:getmodule("FARcontrollablesurface"),
+  ship:partstagged("s2fin")[2]:getmodule("FARcontrollablesurface"),
+  ship:partstagged("s2fin")[3]:getmodule("FARcontrollablesurface")
+).
+set lfo to ship:partstagged("ospray")[0]:getmodule("ModuleEnginesFX").
+set supportArms to list(
+  ship:partstagged("support")[0]:getmodule("modulewheeldeployment"),
+  ship:partstagged("support")[1]:getmodule("modulewheeldeployment"),
+  ship:partstagged("support")[2]:getmodule("modulewheeldeployment")
+).
+set shrouds to list(
+  ship:partstagged("lfoshroud")[0]:getmodule("proceduralfairingdecoupler"),
+  ship:partstagged("lfoshroud")[1]:getmodule("proceduralfairingdecoupler")
+).
+set fairings to list(
+  ship:partstagged("fairing")[0]:getmodule("proceduralfairingdecoupler"),
+  ship:partstagged("fairing")[1]:getmodule("proceduralfairingdecoupler")
+).
 set serviceTower to ship:partstagged("tower")[0]:getmodule("LaunchClamp").
+
+// disable 2nd stage fins for initial ascent
+for fin in s2finCtrl fin:setfield("std. ctrl", true).
+wait 0.1.
+for fin in s2finCtrl fin:setfield("ctrl dflct", 0).
 
 // add any custom logging fields, then call for header write and setup log call
 set getter("addlLogData")["Total Fuel (u)"] to {
-  return ship:liquidfuel + ship:oxidizer.
+  return ship:solidfuel + ship:liquidfuel + ship:oxidizer.
 }.
-set getter("addlLogData")["Cold Gas (u)"] to {
-  return ship:coldgas.
-}.
-set getter("addlLogData")["Payload Internal (k)"] to {
-  return ship:partstagged("capsule")[0]:getmodule("HotSpotModule"):getfield("Temp [I]"):split(" / ")[0].
-}.
-set getter("addlLogData")["Payload Surface (k)"] to {
-  return ship:partstagged("capsule")[0]:getmodule("HotSpotModule"):getfield("Temp [S]"):split(" / ")[0].
-}.
-set getter("addlLogData")["Heat Shield Internal (k)"] to {
-  if ship:partstagged("heatshield"):length {
-    return ship:partstagged("heatshield")[0]:getmodule("HotSpotModule"):getfield("Temp [I]"):split(" / ")[0].
-  } else return "N/A".
-}.
-set getter("addlLogData")["Heat Shield Surface (k)"] to {
-  if ship:partstagged("heatshield"):length {
-    return ship:partstagged("heatshield")[0]:getmodule("HotSpotModule"):getfield("Temp [S]"):split(" / ")[0].
-  } else return "N/A".
+set getter("addlLogData")["Stage Fuel (u)"] to {
+  return stage:solidfuel + stage:liquidfuel + stage:oxidizer.
 }.
 initLog().
 function logData {
@@ -61,7 +75,7 @@ function logData {
 
 // determine our max allowable EC drainage
 // totalEC / mission time in seconds
-set maxECdrain to getter("fullChargeEC") / 1650.
+set maxECdrain to getter("fullChargeEC") / 885.
 
 // track EC usage per second to ensure we have enough to last the mission at launch
 function monitorEcDrain {
@@ -75,7 +89,7 @@ function monitorEcDrain {
   set currEC to EClvl+ECNRlvl.
 }
 
-// retract service tower, start doing battery drain checks, ignition timing and set for control check
+// retract service tower, start doing battery drain checks and launch timing
 function terminalCount {
   output("Terminal count begun, monitoring EC levels").
   serviceTower:doevent("release clamp").
@@ -84,10 +98,9 @@ function terminalCount {
   else set ECNRlvl to 0.
   set currEC to EClvl+ECNRlvl.
   sleep("monitorEcDrain", monitorEcDrain@, 1, true, true).
-  sleep("ignition", ignition@, getter("launchTime") - 6, false, false).
-  sleep("ctrlCheckStart", ctrlCheckStart@, getter("launchTime") - 15, false, false).
+  sleep("launch", launch@, getter("launchTime"), false, false).
+  sleep("retractSupportArms", retractSupportArms@, getter("launchTime") - 5, false, false).
   operations:remove("terminalCount").
 }
 
-lock throttle to currThrottle.
 output("Vessel boot up").
