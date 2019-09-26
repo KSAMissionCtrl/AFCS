@@ -8,6 +8,15 @@ Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Change Log
 
+**Progeny Mk7-A Flight 2** (9/26/19)
+
+Operations:
+  - Turning on and off the SAS now also enables/disables the reaction wheel system
+  - Some functions for pre-launch operations changed to sleep timers to reduce instruction cost
+  - Rocket now pitches over prior to engaging guidance lock
+  - Upper fins are locked and do not steer until guidance is enabled
+  - MaxQ monitoring is only done when needed rather than all the time to reduce instruction cost
+
 **Ascension Mk1 Flight 9** (9/17/19)
 
 Repository:
@@ -34,7 +43,7 @@ Operations:
   - Control surface movement check added to T-15s in terminal countdown
   - Fix pitch guidance to monitor actual pitch value and ensure lock occurs when value is reached. Also accounts for calculated value not reaching target and beginning to increase
   
-  **Ascension Mk1 Flight 7** (7/18/19)
+**Ascension Mk1 Flight 7** (7/18/19)
 
 Operations:
   - Proper use of `unlock` to release `lock`ed variables
