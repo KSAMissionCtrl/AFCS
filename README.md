@@ -8,6 +8,16 @@ Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Change Log
 
+**Ascension Mk1 Flight 10** (10/22/19)
+
+Repository:
+  - Reverted to the operations directory holding files for multiple vehicles. This is so a proper diff check can be performed when code is changed for a vehicle
+  
+Operations:
+  - Launch time updated
+  - Pitch hold now anticipates the upcoming hold angle much closer to the target
+  - Steering remains locked while still in the atmosphere after MECO
+  
 **Progeny Mk7-A Flight 2** (9/26/19)
 
 Operations:
