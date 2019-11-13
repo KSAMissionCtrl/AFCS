@@ -8,6 +8,14 @@ Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Change Log
 
+**Progeny Mk6 Block I Flight 12** (11/13/19)
+
+Operations
+  - Functions for re-entry and recovery moved into their own file `return.ks`
+  - All general operations code brought up to date with improvements made in flights for the Progenitor Mk7-A, Mk6-II and Ascension Mk1 that were performed since the last Mk6-I has flown
+  - Mission specific science code updated to trigger onboard instruments
+  - Launch time set
+
 **Folder Restructure** (11/13/19)
 
 Repository:
