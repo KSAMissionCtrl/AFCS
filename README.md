@@ -8,6 +8,11 @@ Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Change Log
 
+**Folder Restructure** (11/13/19)
+
+Repository:
+  - Changed operations folder to hold files not just for multiple vehicles but multiple vehicle types for each rocket program so that proper diff checks are made when new vehicle code is uploaded
+
 **Ascension Mk1 Flight 10** (10/22/19)
 
 Repository:
