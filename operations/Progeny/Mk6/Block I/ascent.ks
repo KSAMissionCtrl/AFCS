@@ -1,34 +1,20 @@
 // functions are in the order of flight operations
-function TCountNotification {
-  output("Terminal count begun, monitoring EC levels").
-  operations:remove("TCountNotification").
-}
-
 function terminalCount {
 
-  // terminal count begins 2min prior to launch
-  if time:seconds <= launchTime - 120 {
-
-    // until launch, ensure that EC levels are not falling faster than they should be
-    set currEC to EClvl.
-    if currEC - EClvl >= maxECdrain {
-      setAbort(true, "EC drain is excessive at " + round(currEC - EClvl, 3) + "ec/s").
-      operations:remove("terminalCount").
-    }
-
-    // set up for ignition at T-0 seconds
-    when time:seconds >= launchTime then {
-      operations:remove("terminalCount").
-      set operations["launch"] to launch@.
-    }
+  // set up for ignition at T-0 seconds
+  if time:seconds >= getter("launchTime") {
+    operations:remove("terminalCount").
+    set operations["launch"] to launch@.
+    sleepTimers:remove("monitorEcDrain").
   }
 }
 
 function launch {
 
   // check if we have launch clearance
-  if not abort { 
-    stage.
+  if not launchAbort { 
+    rail:doevent("decouple").
+    srb1:doevent("activate engine").
     output("launch!").
     
     // allow a physics tick for things to get updated
@@ -40,12 +26,9 @@ function launch {
     } else {
     
       // setup some triggers, nested so only a few are running at any given time
-      when maxQ > ship:q then output("MaxQ: " + round(ship:Q * constant:ATMtokPa, 3) + "kPa").
-      when ship:altitude > 45000 then {
-        for fairing in fairings {
-          fairing:doevent("decouple").
-        }
-        output("Payload fairing jettison").
+      when maxQ > ship:q then {
+        output("MaxQ: " + round(ship:Q * constant:ATMtokPa, 3) + "kPa @ " + round(ship:altitude/1000, 3) + "km").
+        operations:remove("maxQmonitor").
       }
       when ship:apoapsis > 70000 then {
         output("We are going to space!").
@@ -58,17 +41,21 @@ function launch {
       }
       when ship:verticalspeed <= 0 then {
         output("Apokee achieved @ " + round(ship:altitude/1000, 3) + "km").
-        set phase to "Apokee".
         when ship:altitude <= 70000 then {
           output("Atmospheric interface breached").
           set operations["chuteDeploy"] to chuteDeploy@.
           set operations["airbrakeDeploy"] to airbrakeDeploy@.
+          set operations["maxQmonitor"] to maxQmonitor@.
           set maxQ to 0.
         }
       }
       
+      // begin telemetry logging with an intial entry followed by one every second
+      logData().
+      sleep("datalogger", logData@, 1, true, true).
+
       // handle certain things regardless of what ascent state we are in
-      set operations["ongoingOps"] to ongoingOps@.
+      set operations["maxQmonitor"] to maxQmonitor@.
       
       // wait for first stage boost to complete
       set operations["stageOneBoost"] to stageOneBoost@.
@@ -77,12 +64,13 @@ function launch {
   operations:remove("launch").
 }
 
+function maxQmonitor {
+  if ship:q > maxQ set maxQ to ship:q.
+}
+
 function stageOneBoost {
   if stageOne = "Flame-Out!" {
     output("Stage one boost completed, standing by to decouple. Pitch is " + round(pitch_for(ship), 3)).
-    
-    // update the phase for use when rendering the trajectory with path.ks
-    set phase to "Stage Two Coast".
     
     // trigger setup to decouple the booster after one second
     set stageCountdown to time:seconds.
@@ -129,7 +117,6 @@ function stageTwoCoast {
       set operations["coastToLanding"] to coastToLanding@.
     } else {
       output("Stage two boost started. Pitch is " + round(pitch_for(ship), 3) + ", vertical speed is " + round(ship:verticalspeed, 3) + "m/s").
-      set phase to "Stage Two Boost".
       operations:remove("stageTwoCoast").
       set operations["stageTwoBoost"] to stageTwoBoost@.
     }
@@ -139,7 +126,6 @@ function stageTwoCoast {
 function stageTwoBoostWait {
   if stageTwo = "Nominal" {
     output("Stage two boost started. Pitch is " + round(pitch_for(ship), 3) + ", vertical speed is " + round(ship:verticalspeed, 3) + "m/s").
-    set phase to "Stage Two Boost".
     operations:remove("stageTwoBoostWait").
     set operations["stageTwoBoost"] to stageTwoBoost@.
   }
@@ -148,7 +134,6 @@ function stageTwoBoostWait {
 function stageTwoBoost {
   if stageTwo = "Flame-Out!" {
     output("Stage two boost completed, standing by to decouple").
-    set phase to "Stage Three Boost".
     set stageCountdown to time:seconds.
     when time:seconds - stageCountdown >= 1 then {
       for fin in s2fins { fin:doevent("kaboom!"). }
@@ -175,7 +160,6 @@ function stageThreeBoost {
     operations:remove("stageThreeBoost").
     set operations["coastToLanding"] to coastToLanding@.
   } else {
-    set phase to "Stage Three Boost".
     operations:remove("stageThreeBoost").
     set operations["beco"] to beco@.
   }
@@ -184,49 +168,11 @@ function stageThreeBoost {
 function beco {
   if stageThree = "Flame-Out!" {
     output("Stage three boost completed").
-    set phase to "Stage Three Coast".
     unlock throttle.
     operations:remove("beco").
   }
 }
 
-function airbrakeDeploy {
-
-  // wait until dynamic pressure begins to drop before releasing airbrakes
-  if maxQ > ship:q {
-    for airbrake in airbrakes { airbrake:setfield("deploy", true). }
-    operations:remove("airbrakeDeploy").
-    output("MaxQ: " + round(ship:Q * constant:ATMtokPa, 3) + "kPa - deploying airbrakes").
-  }
-}
-
-function chuteDeploy {
-
-  // keep track of speed and altitude
-  // release chute as soon as it's safe, or as last-ditch attempt if below 1.5km
-  if ship:velocity:surface:mag < chuteSafeSpeed or alt:radar < 1500 {
-    chute:doevent("deploy chute").
-    output("Initial chute deploy triggered @ " + round(ship:altitude/1000, 3) + "km").
-    set phase to "initial Chute Deploy".
-    when abs(ship:verticalspeed) <= 10 then {
-      output("Full chute deployment @ " + round(ship:altitude, 3) + "m").
-      set phase to "Full Chute Deploy".
-      set operations["coastToLanding"] to coastToLanding@.
-    }
-    operations:remove("chuteDeploy").
-  }
-}
-
-function coastToLanding {
-  if ship:status = "SPLASHED" {
-    output("Splashdown @ " + round(abs(chuteSpeed), 3) + "m/s, " + round(circle_distance(latlng(getter("launchPositionLat"),getter("launchPositionLng")), ship:geoposition, ship:orbit:body:radius)/1000, 3) + "km downrange").
-    operations:remove("coastToLanding").
-  } else if ship:status = "LANDED" {
-    output("Touchdown @ " + round(abs(chuteSpeed), 3) + "m/s, " + round(circle_distance(latlng(getter("launchPositionLat"),getter("launchPositionLng")), ship:geoposition, ship:orbit:body:radius)/1000, 3) + "km downrange").
-    operations:remove("coastToLanding").
-  } else if time:seconds - currTime >= logInterval { set chuteSpeed to ship:verticalspeed. }
-}
-
-set operations["terminalCount"] to terminalCount@.
-sleep("TCountNotification", TCountNotification@, launchTime - 120, false, false).
+// terminal count begins 2min prior to launch
+sleep("beginTCount", beginTCount@, getter("launchTime") - 120, false, false).
 output("Launch/Ascent ops ready, awaiting terminal count").
