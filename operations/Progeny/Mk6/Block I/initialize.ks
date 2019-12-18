@@ -8,7 +8,7 @@ set maxQ to 0.
 lock throttle to 1.
 
 // initialize volatile variables
-declr("launchTime", 102259200).
+declr("launchTime", 102965820).
 
 // keep track of part status
 lock stageOne to ship:partstagged("srb1")[0]:getmodule("ModuleEnginesFX"):getfield("status").
