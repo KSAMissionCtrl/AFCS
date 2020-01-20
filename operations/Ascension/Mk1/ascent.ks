@@ -1,54 +1,8 @@
 // functions are in the order of flight operations
-function lesAbortMonitor {
-
-  // can be triggered by manual abort or no longer being able to detect the fuel tank
-  if abort or not ship:partstagged("tank"):length {
-    output("LES abort triggered!").
-
-    // stop any ascent operations and remove locked variables related to lower stages
-    operations:remove("maxQmonitor").
-    operations:remove("ascentToPitchHold").
-    operations:remove("ascentToMeco").
-    unlock engineStatus.
-    unlock engineThrust.
-    
-    // if there is still a decoupler, then detach capsule from the fuel tank
-    if ship:partstagged("decoupler"):length decoupler:doevent("decouple").
-
-    // fire the kick motor
-    lesKickMotor:doevent("activate engine").
-    wait 0.005.
-
-    // if kick motor did not fire, we need to light off one of the push motors first to angle the capsule away
-    // make sure not to light off the motor whose status we are tracking
-    if lesKickStatus <> "Nominal" {
-      lesPushMotorRight:doevent("activate engine").
-      wait 0.02.
-      lesPushMotorDw:doevent("activate engine").
-      lesPushMotorUp:doevent("activate engine").
-      lesPushMotorLeft:doevent("activate engine").
-    } else {
-      lesPushMotorRight:doevent("activate engine").
-      lesPushMotorDw:doevent("activate engine").
-      lesPushMotorUp:doevent("activate engine").
-      lesPushMotorLeft:doevent("activate engine").
-    }
-
-    // switch over to landing state and dump the tower once LES expires
-    when lesStatus = "Flame-Out!" then {
-      lesDecoupler:doevent("decouple").
-      set operations["chuteDeployAbort"] to chuteDeployAbort@.
-      set maxQ to 0.
-      output("LES tower burnout. Prepped for chute deploy").
-    }
-    operations:remove("lesAbortMonitor").
-  }
-}
-
 function ignition {
 
   // ensure we have clearance to proceed with ignition
-  if not launchAbort {
+  if not launchAbort and ctrlCheckComplete {
 
     // engine alternator will now provide power
     sleepTimers:remove("monitorEcDrain").
@@ -63,10 +17,7 @@ function ignition {
       
     // pause a sec to allow ignition
     sleep("launchThrust", launchThrust@, 1, true, false).
-
-    // ensure the LES activates in the case of any troubles
-    set operations["lesAbortMonitor"] to lesAbortMonitor@.
-  }
+  } else if not ctrlCheckComplete setAbort(true, "Low hydraulic pressure").
   operations:remove("ignition").
 }
 
@@ -81,7 +32,7 @@ function launchThrust {
     // throttle up to and maintain a TWR of 1.2
     // take into account the mass of the engine clamp
     output("Go for launch thrust").
-    lock throttle to 1.2 * (ship:mass - 0.10) * (surfaceGravity/((((ship:orbit:body:radius + ship:altitude)/1000)/(ship:orbit:body:radius/1000))^2)) / getAvailableThrust().
+    lock throttle to 1.2 * (ship:mass - 0.1) * (surfaceGravity/((((ship:orbit:body:radius + ship:altitude)/1000)/(ship:orbit:body:radius/1000))^2)) / getAvailableThrust().
 
     // move on to launch
     operations:remove("launchThrust").
@@ -99,7 +50,7 @@ function launch {
     if engineThrust / weight >= 1.2 {
 
       // disengage engine clamp
-      stage.
+      launchClamp:doevent("release clamp").
       output("Launch!").
       
       // adjust throttle to proper TWR now that clamp is gone
@@ -107,7 +58,6 @@ function launch {
 
       // wait until we've cleared the service towers
       // this is so the pad and engine clamp are not damaged by engine exhaust
-      set launchHeight to alt:radar.
       set operations["throttleUp"] to throttleUp@.
 
       // initial pitch over
@@ -118,15 +68,13 @@ function launch {
       when ship:orbit:apoapsis > 70000 then {
         output("We are going to space!").
         when ship:altitude >= 70000 then {
-          output("Space reached!").
           when ship:verticalspeed <= 0 then {
-            output("Apokee achieved @ " + round(ship:altitude/1000, 3) + "km").
+            output("Apokee achieved @ " + round(ship:altitude/1000, 3) + "km. Payload decoupled").
             when ship:altitude <= 70000 then {
               output("Atmospheric interface breached").
               set maxQ to 0.
               rcs off.
               sas off.
-              set operations["chuteDeploy"] to chuteDeploy@.
               when maxQ > ship:q then {
                 output("MaxQ: " + round(ship:Q * constant:ATMtokPa, 3) + "kPa @ " + round(ship:altitude/1000, 3) + "km").
                 operations:remove("maxQmonitor").
@@ -138,36 +86,46 @@ function launch {
 
     // takeoff thrust failed to set
     } else {
-      setAbort(true, "Engine TWR not set for launch commit. Only at " + round(engineThrust / weight, 5)).
+      setAbort(true, "Engine TWR not set for launch commit. Only at " + (engineThrust / weight)).
       engine:doevent("shutdown engine").
     }
   } else {
 
     // make double sure the engine was shut down by whatever abort was thrown
-    engine:doevent("shutdown engine").
+    if engine:hasevent("shutdown engine") engine:doevent("shutdown engine").
   }
   operations:remove("launch").
 }
 
 function throttleUp {
-  if alt:radar >= launchHeight + 8.1 {
+  if ship:altitude >= 85 {
 
     // enable guidance
     // pitch over steering taken from https://www.youtube.com/watch?v=NzlM6YZ9g4w
-    // https://www.wolframalpha.com/input/?i=quadratic+fit((86,89.6),+(5000,79.75),+(10000,70.95),+(20000,57.35),+(30000,48.5),+(40000,45))
-    lock pitch to 2.52971E-8 * ship:altitude^2 - 0.00213203 * ship:altitude + 89.7788.
-    set hdgHold to 54.
+    // https://www.wolframalpha.com/input/?i=quadratic+fit%28%2885%2C89.6%29%2C+%2810000%2C64%29%2C+%2820000%2C43%29%2C+%2830000%2C27%29%2C+%2840000%2C15%29%2C+%2860000%2C5%29%29
+    lock pitch to 2.2878E-8 * ship:altitude^2 - 0.00278367 * ship:altitude + 89.7046.
     lock steering to heading(hdgHold,pitch).
-    set lastPitch to pitch.
 
-    // throttle up to nearly full, lock TWR and head for pitch hold
-    // also enable MECO checks in case pitch hold is not reached
-    lock throttle to 1.65 * ship:mass * (surfaceGravity/((((ship:orbit:body:radius + ship:altitude)/1000)/(ship:orbit:body:radius/1000))^2)) / getAvailableThrust().
-    sleep("ascentToPitchHold", ascentToPitchHold@, 1, true, false). // wait so pitch value changes
+    // setup the throttle model to adjust by altitude
+    set currThrottle to 0.84228668038601.
+    lock throttle to currThrottle.
+    set throttleProfile to queue().
+    throttleProfile:push(lexicon(500, 0.80296959995735)).
+    throttleProfile:push(lexicon(1250, 0.7521563596396)).
+    throttleProfile:push(lexicon(2500, 0.65224132367932)).
+    throttleProfile:push(lexicon(5000, 0.61534769546699)).
+    throttleProfile:push(lexicon(7500, 0.616417444269537)).
+    throttleProfile:push(lexicon(10000, 0.613379442497797)).
+    throttleProfile:push(lexicon(15000, 0.608442284525448)).
+    throttleProfile:push(lexicon(20000, 0.604424761581035)).
+    throttleProfile:push(lexicon(30000, 0.602787033402563)).
+    throttleProfile:push(lexicon(35000, 0.602413141932895)).
+    throttleProfile:push(lexicon(40000, 0.609706496685772)).
+    throttleProfile:push(lexicon(45000, 0)).
+    
     set operations["ascentToMeco"] to ascentToMeco@.
-    set operations["ascentThrottleUp"] to ascentThrottleUp@.
     set operations["maxQmonitor"] to maxQmonitor@.
-    output("Tower cleared, flight guidance enabled & throttle set to 1.65 TWR").
+    output("Tower cleared, flight guidance enabled & throttle set").
     operations:remove("throttleUp").
   }
 }
@@ -176,82 +134,65 @@ function maxQmonitor {
   if ship:q > maxQ set maxQ to ship:q.
 }
 
-function ascentToPitchHold {  
-
-  // keep track of the actual pitch and when it nears 45 hold there
-  if pitch_for(ship) <= 45.2 {
-    lock pitch to 45.
-    output("Max pitch approaching, holding at 45 degrees").
-    operations:remove("ascentToPitchHold").
-    return.
-  }
-
-  // also switch to pitch hold if calculated pitch value starts to rise
-  if pitch > lastPitch {
-    lock pitch to 45.
-    output("Pitch profile increasing at " + round(pitch, 3) + ". Switching to hold at 45 degrees").
-    operations:remove("ascentToPitchHold").
-  }
-  set lastPitch to pitch.
-}
-
-// go to max thrust at 40km so we burn out in the atmosphere
-function ascentThrottleUp {
-  if ship:altitude >= 40000 {
-    lock throttle to 1.
-    output("Main engine throttle up").
-    operations:remove("ascentThrottleUp").
-  }
-}
-
 function ascentToMeco {
   if engineStatus = "Flame-Out!" {
     unlock throttle.
-    output("Main engine burn complete").
+    output("Main engine flamed out").
     operations:remove("ascentToMeco").
-    operations:remove("lesAbortMonitor").
+  }
 
-    // decouple the capsule after 10s
-    sleep("payloadDecouple", payloadDecouple@, 10, true, false).
+  // monitor altitude and compare to next throttle change point to take action when needed
+  if (throttleProfile:peek():keys[0] <= ship:altitude) {
+
+    // pop out the throttle value from the queue & set it
+    set currThrottle to throttleProfile:pop():values[0].
+
+    // if we just killed the throttle, also shut down the engine, detach payload fairings & attempt to hold prograde
+    if (currThrottle <= 0) {
+      engine:doevent("shutdown engine").
+      lock steering to ship:prograde.
+      for plf in fairings plf:doevent("jettison fairing").
+      output("Main engine burn complete, PLF detached, attempting to hold prograde").
+      operations:remove("ascentToMeco").
+      set operations["coastToSpace"] to coastToSpace@.
+    } else output("Throttle set to " + round(currThrottle*100, 3) + "% @ " + round(ship:altitude/1000, 3) + "km").
   }
 }
 
-// begin check of control surfaces at T-15s
+function coastToSpace {
+  if ship:altitude >= 70000 {
+    output("Space reached!").
+    unlock steering.
+    operations:remove("coastToSpace").
+
+    // decouple the payload at apokee
+    set operations["payloadDecouple"] to payloadDecouple@.
+  }
+}
+
+function payloadDecouple {
+  if ship:verticalSpeed <= 0 {
+    decoupler:doevent("decoupler staging").
+    operations:remove("payloadDecouple").
+  }
+}
+
+// begin check of control surfaces at T-10s
+// just do a roll check both ways to make all four fins travel
 function ctrlCheckStart {
-  set ship:control:pitch to 1.
-  operations:remove("ctrlCheckStart").
-  sleep("ctrlCheckPitchDown", ctrlCheckPitchDown@, 1, true, false).
-}
-function ctrlCheckPitchDown {
-  set ship:control:pitch to -1.
-  operations:remove("ctrlCheckPitchDown").
-  sleep("ctrlCheckRollLeft", ctrlCheckRollLeft@, 1, true, false).
-}
-function ctrlCheckRollLeft {
-  set ship:control:pitch to 0.
-  set ship:control:roll to -1.
-  operations:remove("ctrlCheckRollLeft").
-  sleep("ctrlCheckRollRight", ctrlCheckRollRight@, 1, true, false).
-}
-function ctrlCheckRollRight {
   set ship:control:roll to 1.
-  operations:remove("ctrlCheckRollRight").
-  sleep("ctrlCheckYawLeft", ctrlCheckYawLeft@, 1, true, false).
+  operations:remove("ctrlCheckStart").
+  sleep("ctrlCheckRoll", ctrlCheckRoll@, 1, true, false).
 }
-function ctrlCheckYawLeft {
-  set ship:control:roll to 0.
-  set ship:control:yaw to -1.
-  operations:remove("ctrlCheckYawLeft").
-  sleep("ctrlCheckYawRight", ctrlCheckYawRight@, 1, true, false).
-}
-function ctrlCheckYawRight {
-  set ship:control:yaw to 1.
-  operations:remove("ctrlCheckYawRight").
+function ctrlCheckRoll {
+  set ship:control:roll to -1.
+  operations:remove("ctrlCheckRoll").
   sleep("ctrlCheckFinish", ctrlCheckFinish@, 1, true, false).
 }
 function ctrlCheckFinish {
-  set ship:control:yaw to 0.
+  set ship:control:roll to 0.
   unlock steering.
+  set ctrlCheckComplete to true.
   operations:remove("ctrlCheckFinish").
 }
 
