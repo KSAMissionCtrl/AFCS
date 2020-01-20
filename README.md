@@ -8,6 +8,17 @@ Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Change Log
 
+**Ascension Mk1 Flight 11** (1/20/20)
+
+Operations
+  - Removed all code related to kerbed flight (LES, flight abort, etc)
+  - Space operations (decoupling payload) moved to ascent.ks and recovery operations removed entirely as uneeded
+  - Extra logging added for temperature monitoring of PLF and RTG
+  - Pre-ignition control check shortened to just a roll check, which moves all 4 fins through full range of motion
+  - Make sure on launch abort that the engine is active before attempting shut down
+  - Include throttle profile to keep ascent speed in check
+  - Update launch time, heading lock, EC drain checks
+
 **Directory Update** (1/20/20)
 
 Repository:
