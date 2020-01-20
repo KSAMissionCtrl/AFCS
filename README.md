@@ -8,6 +8,11 @@ Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Change Log
 
+**Directory Update** (1/20/20)
+
+Repository:
+  - Changed Ascension operations folder to contain separate directories for the Mk1 and Mk2 operations scripts. This was done in advance of Mk1 #11 code update so proper diff files would be generated
+
 **Progeny Mk6 Block I Flight 15** (12/18/19)
 
 Operations
