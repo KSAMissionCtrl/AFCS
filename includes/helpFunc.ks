@@ -19,6 +19,13 @@ function setAbort {
   }
 }
 
+// from https://forum.kerbalspaceprogram.com/index.php?/topic/149514-kos-wait-until-facing-prograde/&do=findComment&comment=2793759
+// used to determine when the vessel is pointing in a given direction
+function pointingAt {
+  parameter vector.
+  return vang(ship:facing:forevector,vector) <2.
+}
+
 // from the KSLib
 // https://github.com/KSP-KOS/KSLib/blob/master/library/lib_circle_nav.ks
 function circle_distance {
@@ -86,66 +93,55 @@ FUNCTION vertical_aoa {
 }
 LOCK roll TO ARCTAN2(-VDOT(FACING:STARVECTOR, UP:FOREVECTOR), VDOT(FACING:TOPVECTOR, UP:FOREVECTOR)).
 
-// uses current signal status to determine whether data should be stashed or transmitted
-// we always want to transmit data to save file space, only stash data if signal is not available
-// by default, data is stashed in the vessel log
-declr("jsonSizes", lexicon()).
-function stashmit {
-  parameter data.
-  parameter filename is ship:name + ".log.np2".
-  parameter filetype is "line".
+// taken from u/nuggreat via https://github.com/nuggreat/kOS-scripts/blob/master/logging_atm.ks
+FUNCTION average_grav {
+	PARAMETER rad1 IS SHIP:ALTITUDE,rad2 IS 0, localBody IS SHIP:BODY.
+	IF rad1 > rad2 {
+		RETURN ((localBody:MU / rad2) - (localBody:MU / rad1))/(rad1 - rad2).
+	} ELSE IF rad2 > rad1 {
+		RETURN ((localBody:MU / rad1) - (localBody:MU / rad2))/(rad2 - rad1).
+	} ELSE {
+		RETURN localBody:MU / rad1^2.
+	}
+}
 
-  // transmit the information to KSC if we have a signal
-  if addons:rt:haskscconnection(ship) {
+FUNCTION get_active_eng {
+	LOCAL engList IS LIST().
+	LIST ENGINES IN engList.
+	LOCAL returnList IS LIST().
+	FOR eng IN engList {
+		IF eng:IGNITION AND NOT eng:FLAMEOUT {
+			returnList:ADD(eng).
+		}
+	}
+	RETURN returnList.
+}
 
-    // append the data to the file on the archive
-    if not archive:exists(filename) archive:create(filename).
-    if filetype = "line" archive:open(filename):writeln(data).
-    if filetype = "file" archive:open(filename):write(data).
+FUNCTION isp_at {
+	PARAMETER engineList,curentPressure.  //curentPressure should be in KpA
+	SET curentPressure TO curentPressure * CONSTANT:KPATOATM.
+	LOCAL totalFlow IS 0.
+	LOCAL totalThrust IS 0.
+	FOR engine IN engineList {
+		LOCAL engThrust IS engine:AVAILABLETHRUSTAT(curentPressure).
+		SET totalFlow TO totalFlow + (engThrust / (engine:ISPAT(curentPressure) * 9.80665)).
+		SET totalThrust TO totalThrust + engThrust.
+	}
+	IF totalThrust = 0 {
+		RETURN 1.
+	}
+	RETURN (totalThrust / (totalFlow * 9.80665)).
+}
 
-    // compare the size of the old file to the size of the new one and store it
-    if filetype = "json" {
-      set filesize to archive:open(filename):size.
-      writejson(data, "0:/" + filename).
-      if not getter("jsonSizes"):haskey(filename) getter("jsonSizes"):add(filename, list()).
-      getter("jsonSizes")[filename]:add(archive:open(filename):size - filesize).
-    }
-
-  // stash the information if we have enough space
-  } else {
-
-    // strings and filecontents can be translated directly into byte sizes, but json lists need more work
-    if filetype = "json" {
-
-      // if the json file has not yet been written, we won't know the size
-      // set size to 15bytes per value to avoid disk write overrun
-      if not getter("jsonSizes"):haskey(filename) {
-        getter("jsonSizes"):add(filename, list()).
-        set dataSize to 15 * data:length.
-      } else {
-
-        // get the average size of this json object
-        set dataSize to 0.
-        for filesize in getter("jsonSizes")[filename] set dataSize to dataSize + filesize.
-        set dataSize to dataSize / getter("jsonSizes")[filename]:length.
-      }
-    } else {
-      set dataSize to data:length.
-    }
-
-    if core:volume:freespace > dataSize {
-
-      // append the data to the file locally, it will be sent to KSC next time connection is established
-      if not core:volume:exists("/data/" + filename) core:volume:create("/data/" + filename).
-      if filetype = "line" core:volume:open("/data/" + filename):writeln(data).
-      if filetype = "file" core:volume:open("/data/" + filename):write(data).
-
-      // compare the size of the old file to the size of the new one and store it
-      if filetype = "json" {
-        set filesize to core:volume:open("/data/" + filename):size.
-        writejson(data, "1:/data/" + filename).
-        getter("jsonSizes")[filename]:add(core:volume:open("/data/" + filename):size - filesize).
-      }
-    }
-  }
+FUNCTION active_engine {  // check for a active engine on ship
+	LOCAL engineList IS LIST().
+	LIST ENGINES IN engineList.
+	LOCAL haveEngine IS FALSE.
+	FOR engine IN engineList {
+		IF engine:IGNITION AND NOT engine:FLAMEOUT {
+			SET haveEngine TO TRUE.
+			BREAK.
+		}
+	}
+	RETURN haveEngine.
 }

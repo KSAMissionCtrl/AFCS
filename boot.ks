@@ -19,11 +19,11 @@ for part in ship:parts if part:hasmodule("ModuleRTAntenna") {
 
 // get a hibernation controller?
 set canHibernate to false.
-if (ship:partstagged("hibernationCtrl"):length) {
+if ship:partstagged("hibernationCtrl"):length {
   set hibernateCtrl to ship:partstagged("hibernationCtrl")[0]:getmodule("Timer").
   set canHibernate to true.
-  if ship:partstagged("cpu")[0]:getmodule("ModuleGenerator"):hasevent("Activate CPU") {
-    ship:partstagged("cpu")[0]:getmodule("ModuleGenerator"):doevent("Activate CPU").
+  if ship:partstagged(core:tag)[0]:getmodule("ModuleGenerator"):hasevent("Activate CPU") {
+    ship:partstagged(core:tag)[0]:getmodule("ModuleGenerator"):doevent("Activate CPU").
   }
 }
 
@@ -104,8 +104,9 @@ function opsRun {
           // run a stored file that we only want to execute this wake period
           if cmd[0] = "cmd" {
             if core:volume:exists("/cmd/" + cmd[1] + ".ks") {
+              set opTime to time:seconds.
               runpath("/cmd/" + cmd[1] + ".ks").
-              output("Command load complete for " + cmd[1]).
+              output("Command load complete for " + cmd[1]  + " (" + round(time:seconds - opTime,2) + "ms)").
             }
             else output("Could not find /cmd/" + cmd[1]).
           } else
@@ -117,8 +118,9 @@ function opsRun {
                 set copyName to cmd[1]:split("/").
                 set copyName to copyName[copyName:length-1].
               } else set copyName to cmd[1].
+              set opTime to time:seconds.
               runpath("0:" + cmd[1] + ".ks").
-              output("Instruction execution complete for " + copyName).
+              output("Instruction execution complete for " + copyName  + " (" + round(time:seconds - opTime,2) + "ms)").
             } else {
               output("Could not find " + cmd[1]).
             }
@@ -161,9 +163,13 @@ function opsRun {
           // WARNING!! Destroys delegate references. This should only be used as an option prior to reboot command
           if cmd[0] = "save" {
             writeToMemory().
-          } else output("unknown command " + cmd[0] + ":" + cmd[1]).
+          } else output("Unknown command " + cmd[0] + ":" + cmd[1]).
         }
         set runSafe to true.
+
+        // if we have suddenly lost connection, it is because of a decoupling of vessels
+        // wait until connection is re-established before allowing execution to continue
+        if not addons:rt:haskscconnection(ship) wait until addons:rt:haskscconnection(ship).
         archive:delete(ship:name + ".ops.ks").
       }
 
@@ -180,7 +186,7 @@ function opsRun {
           }
           core:volume:delete("/data/" + dataFile:name).
         }
-        output("data dump to KSC complete").
+        output("Data dump to KSC complete").
       }
     }
 
@@ -331,21 +337,26 @@ function hibernate {
     if not comms setCommStatus("Deactivate").
 
     // define the file that will run once after coming out of hibernation
-    setter("wakeFile", wakeFile).
+    if wakefile:length setter("wakeFile", wakeFile).
 
     // save all the current volatile data
     writeToMemory().
 
     // set and activate the timer?
-    if (duration) {
-      hibernateCtrl:setfield("seconds", duration).
+    if duration > 0 and duration <= 120 {
+      if hibernateCtrl:hasevent("Use Seconds") hibernateCtrl:doevent("Use Seconds").
+      hibernateCtrl:setfield("Seconds", duration).
+      hibernateCtrl:doevent("Start Countdown").
+    } else if duration > 0 {
+      if hibernateCtrl:hasevent("Use Minutes") hibernateCtrl:doevent("Use Minutes").
+      hibernateCtrl:setfield("Minutes", floor(duration/60)).
       hibernateCtrl:doevent("Start Countdown").
     }
     
     // switch off the cpu. Nite nite!
     output("Activating hibernation").
-    ship:partstagged("cpu")[0]:getmodule("ModuleGenerator"):doevent("Hibernate CPU").
-    ship:partstagged("cpu")[0]:getmodule("KOSProcessor"):doevent("Toggle Power").
+    ship:partstagged(core:tag)[0]:getmodule("ModuleGenerator"):doevent("Hibernate CPU").
+    ship:partstagged(core:tag)[0]:getmodule("KOSProcessor"):doevent("Toggle Power").
   } else output ("Hibernation is not supported on this vessel!").
 }
 
@@ -376,6 +387,70 @@ function runOpsFile {
     runpath("/ops/" + filename + ".ks").
     output(filename + " loaded and executed (" + round(time:seconds - opTime,2) + "ms)").
   } else output("Could not find " + filename + " to execute").
+}
+
+// uses current signal status to determine whether data should be stashed or transmitted
+// we always want to transmit data to save file space, only stash data if signal is not available
+// by default, data is stashed in the vessel log
+declr("jsonSizes", lexicon()).
+function stashmit {
+  parameter data.
+  parameter filename is ship:name + ".log.np2".
+  parameter filetype is "line".
+
+  // transmit the information to KSC if we have a signal
+  if addons:rt:haskscconnection(ship) {
+
+    // append the data to the file on the archive
+    if not archive:exists(filename) archive:create(filename).
+    if filetype = "line" archive:open(filename):writeln(data).
+    if filetype = "file" archive:open(filename):write(data).
+
+    // compare the size of the old file to the size of the new one and store it
+    if filetype = "json" {
+      set filesize to archive:open(filename):size.
+      writejson(data, "0:/" + filename).
+      if not getter("jsonSizes"):haskey(filename) getter("jsonSizes"):add(filename, list()).
+      getter("jsonSizes")[filename]:add(archive:open(filename):size - filesize).
+    }
+
+  // stash the information if we have enough space
+  } else {
+
+    // strings and filecontents can be translated directly into byte sizes, but json lists need more work
+    if filetype = "json" {
+
+      // if the json file has not yet been written, we won't know the size
+      // set size to 15bytes per value to avoid disk write overrun
+      if not getter("jsonSizes"):haskey(filename) {
+        getter("jsonSizes"):add(filename, list()).
+        set dataSize to 15 * data:length.
+      } else {
+
+        // get the average size of this json object
+        set dataSize to 0.
+        for filesize in getter("jsonSizes")[filename] set dataSize to dataSize + filesize.
+        set dataSize to dataSize / getter("jsonSizes")[filename]:length.
+      }
+    } else {
+      set dataSize to data:length.
+    }
+
+    if core:volume:freespace > dataSize {
+
+      // append the data to the file locally, it will be sent to KSC next time connection is established
+      if not core:volume:exists("/data/" + filename) core:volume:create("/data/" + filename).
+      if filetype = "line" core:volume:open("/data/" + filename):writeln(data).
+      if filetype = "file" core:volume:open("/data/" + filename):write(data).
+
+      // compare the size of the old file to the size of the new one and store it
+      if filetype = "json" {
+        set filesize to core:volume:open("/data/" + filename):size.
+        writejson(data, "1:/data/" + filename).
+        getter("jsonSizes")[filename]:add(core:volume:open("/data/" + filename):size - filesize).
+      }
+    }
+  }
 }
 
 ////////////////////////
@@ -409,9 +484,9 @@ if core:volume:exists("/mem/varData.json") set varData to readjson("/mem/varData
 if core:volume:exists("/mem/opsData.json") set operations to readjson("/mem/opsData.json").
 if core:volume:exists("/mem/timerData.json") set sleepTimers to readjson("/mem/timerData.json").
 if core:volume:open("/ops"):size {
-  output("loading onboard operations").
+  output("Loading onboard operations").
   for opsFile in core:volume:open("/ops"):list:values runpath("/ops/" + opsFile).
-  output("onboard operations executed").
+  output("Onboard operations executed").
 }
 
 // initial persistent variable definitions
@@ -428,7 +503,7 @@ if not getter("commRanges"):length {
     if commLinks[comm]:hasevent("Activate") {
       commLinks[comm]:doevent("Activate").
       set deactivate to true.
-      wait 0.001.
+      wait until commLinks[comm]:hasevent("Deactivate").
     }
 
     // store the antenna range in meters
@@ -466,6 +541,8 @@ output("System boot complete").
 ////////////////
 
 // if we came out of hibernation, call the file and delete the variable
-if getter("wakeFile") runpath("/cmd/" + getter("wakeFile") + ".ks").
-setter("wakeFile").
+if getter("wakeFile") {
+  runpath("/cmd/" + getter("wakeFile") + ".ks").
+  setter("wakeFile").
+}
 opsRun().
