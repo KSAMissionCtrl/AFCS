@@ -8,6 +8,20 @@ Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Change Log
 
+**Ascension Mk2 Flight 1** (2/20/20)
+
+AFCS:
+  - [boot.ks] Boot script can now target the kOS core that it is running on without the part needing to be tagged. This means each individual core part can run the boot script independent of each other
+  - [boot.ks] Execution times added to more run commands
+  - [boot.ks] Vessel can now handle connection dropout to KSC during decoupling
+  - [boot.ks] Vessel can go into hibernation without a wake file
+  - [boot.ks] Hibernation can be set for up to 300 minutes
+  - [boot.ks] Wakefile is now destroyed after being run only if it exists, so that a default one is not created
+  - [helpFunc.ks] New function `pointingAt()` can determin if the vessel is oriented at a certain angle
+  
+Operations:
+  - All new flight code based on Ascension Mk1 and Progenitor rockets to guide the Ascension Mk2 up into space and into orbit
+
 **Ascension Mk1 Flight 11** (1/20/20)
 
 Operations
