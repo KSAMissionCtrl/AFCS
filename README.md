@@ -8,6 +8,19 @@ Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Change Log
 
+**Ascension Mk1 Flight 12** (3/20/20)
+
+AFCS:
+  - [boot.ks] New comm protocols in place
+  - [logger.ks] No longer compares integers to strings in some cases
+  
+Operations:
+  - Mission-specific launch time and ascent guidance
+  - Better TWR monitoring for launch thrust
+  - Updated electrical system management to prevent battery drain while alternator is active
+  - Additional capsule sensor logging
+  - Fix issue where telemetry data logging would not stop after landing/splashdown
+
 **Ascension Mk2 Flight 1** (2/20/20)
 
 AFCS:
