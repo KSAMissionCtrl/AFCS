@@ -210,12 +210,14 @@ function logTlm {
 
   // taken from u/nuggreat via https://github.com/nuggreat/kOS-scripts/blob/master/logging_atm.ks
   if ship:altitude < 70000 {
-    SET preVel TO newVel.
-    SET preTime TO newTime.
-    SET preGravVec TO newGravVec.
-    SET preForeVec TO newForeVec.
-    SET preMass TO newMass.
-    SET preDynamicP TO newDynamicP.
-    SET preAtmPressure TO newAtmPressure.
+
+    // make sure no strings are set as numbers
+    if newVel:isType("Scalar") SET preVel TO newVel.
+    if newTime:isType("Scalar") SET preTime TO newTime.
+    if newGravVec:isType("Scalar") SET preGravVec TO newGravVec.
+    if newForeVec:isType("Scalar") SET preForeVec TO newForeVec.
+    if newMass:isType("Scalar") SET preMass TO newMass.
+    if newDynamicP:isType("Scalar") SET preDynamicP TO newDynamicP.
+    if newAtmPressure:isType("Scalar") SET preAtmPressure TO newAtmPressure.
   }
 }

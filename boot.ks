@@ -1,5 +1,5 @@
 //////////////////
-// Initilaization
+// Initialization
 //////////////////
 
 clearscreen.
@@ -7,14 +7,18 @@ set operations to lexicon().
 set varData to lexicon().
 set sleepTimers to lexicon().
 set runSafe to true.
+set commLink to false.
+set blackout to false.
 
 // ensure all systems ready
 wait until ship:unpacked.
 
 // get all comm parts on the ship
+set cmdLink to ship:controlpart:getmodule("modulecommand").
 set commLinks to lexicon().
-for part in ship:parts if part:hasmodule("ModuleRTAntenna") {
-  set commLinks[part:tag] to part:getmodule("ModuleRTAntenna").
+for part in ship:parts {
+  if part:hasmodule("moduledatatransmitter") set commLinks[part:tag] to part:getmodule("moduledatatransmitter").
+  if part:hasmodule("moduledatatransmitterfeedeable") set commLinks[part:tag] to part:getmodule("moduledatatransmitterfeedeable").
 }
 
 // get a hibernation controller?
@@ -27,16 +31,16 @@ if ship:partstagged("hibernationCtrl"):length {
   }
 }
 
-////////////
+/////////////
 // Functions
-////////////
+/////////////
 
 // runs any available operations and waits for new ops
 function opsRun {
   until false {
-    
-    // things to do if there is a connection to KSC
-    if addons:rt:haskscconnection(ship) {
+
+    // things to do if there is a connection
+    if checkCommLink() {
 
       // check if a new ops file is waiting to be executed
       if archive:exists(ship:name + ".ops.ks") {
@@ -166,10 +170,6 @@ function opsRun {
           } else output("Unknown command " + cmd[0] + ":" + cmd[1]).
         }
         set runSafe to true.
-
-        // if we have suddenly lost connection, it is because of a decoupling of vessels
-        // wait until connection is re-established before allowing execution to continue
-        if not addons:rt:haskscconnection(ship) wait until addons:rt:haskscconnection(ship).
         archive:delete(ship:name + ".ops.ks").
       }
 
@@ -231,7 +231,9 @@ function opsRun {
 }
 
 // serialize data we want to preserve between power sessions
-function writeToMemory{
+// this should also be done just when leaving a vessel to return to SC/TS or Main Menu
+// as of right now, no way to do this automatically, has to be a command
+function writeToMemory {
 
   // sanitize the lexicons to remove any delegates
   for var in varData:values if var:typename = "UserDelegate" set var to "null".
@@ -264,14 +266,33 @@ function sleep {
   set sleepTimers[name] to timer.
 }
 
-// keep a running tally of signal status
-function commStatus {
-  if addons:rt:haskscconnection(ship) {
-    output("KSC link acquired").
-    when not addons:rt:haskscconnection(ship) then commStatus().
+// are we connected?
+function checkCommLink {
+  if cmdLink:getfield("comm signal") = "0.00" {
+    if commLink or blackout {
+      set commLink to false.
+      set blackout to false.
+      output("KSC link lost").
+    }
+    return false.
   } else {
-    output("KSC link lost").
-    when addons:rt:haskscconnection(ship) then commStatus().
+    if not commLink and not blackout {
+      set commLink to true. 
+      output("KSC link acquired").
+    }
+
+    // dunno where "NA" comes from, but loading out onto the pad it happens for split second or something
+    if cmdLink:getfield("comm signal") <> "1.00" and cmdLink:getfield("comm signal") <> "NA" and not blackout {
+
+      // if the signal has degraded more than 50% and we are in atmosphere, comm blackout is likely coming soon
+      if cmdLink:getfield("comm signal"):tonumber() < 50 and ship:altitude < 70000 {
+        set commLink to false.
+        set blackout to true.
+        return false.
+      }
+    }
+    if blackout return false.
+    else return true.
   }
 }
 
@@ -291,15 +312,8 @@ function setCommStatus {
 // check for any active comms
 function getCommStatus {
   set status to false.
-  for comms in commLinks:values if comms:hasevent("Deactivate") set status to true.
+  for comms in commLinks:values if comms:hasevent("Retract Antenna") or not comms:hasfield("Status") set status to true.
   return status.
-}
-
-// see whether we are currently in range of KSC
-function commCheck {
-  parameter tag.
-  if getter("commRanges")[tag] < (kerbin:distance-kerbin:radius) return false.
-  else return true.
 }
 
 // define a variable with this value only if it doesn't already exist
@@ -399,7 +413,7 @@ function stashmit {
   parameter filetype is "line".
 
   // transmit the information to KSC if we have a signal
-  if addons:rt:haskscconnection(ship) {
+  if checkCommLink() {
 
     // append the data to the file on the archive
     if not archive:exists(filename) archive:create(filename).
@@ -453,28 +467,28 @@ function stashmit {
   }
 }
 
-////////////////////////
+/////////////////////////
 // Begin system boot ops
-////////////////////////
+/////////////////////////
 
-// check for a new bootscript
-if addons:rt:haskscconnection(ship) {
+if cmdLink:getfield("comm signal") <> "0.00" {
+
+  // check for a new bootscript
   if archive:exists(ship:name + ".boot.ks") {
     print "new system boot file received".
     movepath("0:" + ship:name + ".boot.ks", "/boot/boot.ks").
     wait 1.
     reboot.
   }
-}
 
-// if we are connected to KSC, reload the dependencies in case any were updated
-if addons:rt:haskscconnection(ship) {
+  // reload the dependencies in case any were updated
   if core:volume:exists("/includes") core:volume:delete("/includes").
   copypath("0:/includes", core:volume:root).
 }
 
 // run what dependencies we have stored
 for includesFile in core:volume:open("/includes"):list:values runpath("/includes/" + includesFile).
+checkCommLink().
 
 // ensure required directories exist
 reqDirCheck().
@@ -498,24 +512,12 @@ declr("commRanges", lexicon()).
 if not getter("commRanges"):length {
   for comm in commLinks:keys {
 
-    // turn the antenna on if needed so we can get its range
-    set deactivate to false.
-    if commLinks[comm]:hasevent("Activate") {
-      commLinks[comm]:doevent("Activate").
-      set deactivate to true.
-      wait until commLinks[comm]:hasevent("Deactivate").
-    }
-
     // store the antenna range in meters
-    if commLinks[comm]:hasfield("Dish range") set rangeInfo to commLinks[comm]:getfield("Dish range").
-    if commLinks[comm]:hasfield("Omni range") set rangeInfo to commLinks[comm]:getfield("Omni range").
-    if rangeInfo:contains("Km") set rangeScale to 1000.
-    if rangeInfo:contains("Mm") set rangeScale to 1000000.
-    if rangeInfo:contains("Gm") set rangeScale to 1000000000.
-    set range to (rangeInfo:substring(0, (rangeInfo:length-2)):tonumber())*rangeScale.
-
-    // turn the comm back off if needed
-    if deactivate commLinks[comm]:doevent("Deactivate").
+    set rangeInfo to commLinks[comm]:getfield("Antenna Rating"):split(" ")[0].
+    if rangeInfo:contains("k") set rangeScale to 1000.
+    if rangeInfo:contains("M") set rangeScale to 1000000.
+    if rangeInfo:contains("G") set rangeScale to 1000000000.
+    set range to (rangeInfo:substring(0, (rangeInfo:length-1)):tonumber())*rangeScale.
 
     // list the comm unit
     getter("commRanges"):add(comm, range).
@@ -526,19 +528,11 @@ if not getter("commRanges"):length {
 if getter("lastDay") <> time:day stashmit("[" + time:calendar + "]").
 setter("lastDay", time:day).
 
-// are any comms active?
-if getCommStatus() {
-  if addons:rt:haskscconnection(ship) {
-    output("KSC link acquired").
-    when not addons:rt:haskscconnection(ship) then commStatus().
-  }
-} else when addons:rt:haskscconnection(ship) then commStatus().
-
 output("System boot complete").
 
-////////////////
+/////////////////
 // Begin ops run
-////////////////
+/////////////////
 
 // if we came out of hibernation, call the file and delete the variable
 if getter("wakeFile") {
