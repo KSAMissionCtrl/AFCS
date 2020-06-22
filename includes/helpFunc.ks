@@ -104,7 +104,6 @@ FUNCTION average_grav {
 		RETURN localBody:MU / rad1^2.
 	}
 }
-
 FUNCTION get_active_eng {
 	LOCAL engList IS LIST().
 	LIST ENGINES IN engList.
@@ -116,7 +115,6 @@ FUNCTION get_active_eng {
 	}
 	RETURN returnList.
 }
-
 FUNCTION isp_at {
 	PARAMETER engineList,curentPressure.  //curentPressure should be in KpA
 	SET curentPressure TO curentPressure * CONSTANT:KPATOATM.
@@ -132,7 +130,6 @@ FUNCTION isp_at {
 	}
 	RETURN (totalThrust / (totalFlow * 9.80665)).
 }
-
 FUNCTION active_engine {  // check for a active engine on ship
 	LOCAL engineList IS LIST().
 	LIST ENGINES IN engineList.

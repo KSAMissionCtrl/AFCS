@@ -100,8 +100,14 @@ function initLog {
 function logTlm {
   parameter met.
 
+  // there is a small chance that in the physics ticks between when the first altitude check is made
+  // and the second one at the end, the capsule is then below 70km. We don't want to do anything
+  // in that second check if the first one was false
+  set newVars to false.
+
   // taken from u/nuggreat via https://github.com/nuggreat/kOS-scripts/blob/master/logging_atm.ks
   if ship:altitude < 70000 {
+    set newVars to true.
     SET newTime TO TIME:SECONDS.
     SET newAlt TO SHIP:ALTITUDE.
     SET newDynamicP TO SHIP:Q.//is in atmospheres 
@@ -209,7 +215,7 @@ function logTlm {
   stashmit(datalog, ship:name + ".csv").
 
   // taken from u/nuggreat via https://github.com/nuggreat/kOS-scripts/blob/master/logging_atm.ks
-  if ship:altitude < 70000 {
+  if ship:altitude < 70000 and newVars {
 
     // make sure no strings are set as numbers
     if newVel:isType("Scalar") SET preVel TO newVel.

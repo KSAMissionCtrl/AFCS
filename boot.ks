@@ -47,7 +47,7 @@ function opsRun {
 
         // read each line of the file and carry out the command
         set opLine to archive:open(ship:name + ".ops.ks"):readall:iterator.
-        until not opLine:next  {
+        until not opLine:next or not runSafe  {
           set cmd to opLine:value:split(":").
 
           // load a command file or folder of files from KSC to the onboard disk
@@ -85,7 +85,7 @@ function opsRun {
           } else
 
           // run a stored file that we want to remain running even after reboots
-          if runSafe and cmd[0] = "run" {
+          if cmd[0] = "run" {
 
             // confirm that this is an actual file. If it is not, ignore all further run commands
             // this prevents a code crash if mis-loaded file had dependencies for future files
@@ -111,8 +111,10 @@ function opsRun {
               set opTime to time:seconds.
               runpath("/cmd/" + cmd[1] + ".ks").
               output("Command load complete for " + cmd[1]  + " (" + round(time:seconds - opTime,2) + "ms)").
+            } else {
+              output("Could not find /cmd/" + cmd[1]).
+              set runSafe to false.
             }
-            else output("Could not find /cmd/" + cmd[1]).
           } else
 
           // run a file that we only want to execute once from the archive and not store to run again
@@ -127,6 +129,7 @@ function opsRun {
               output("Instruction execution complete for " + copyName  + " (" + round(time:seconds - opTime,2) + "ms)").
             } else {
               output("Could not find " + cmd[1]).
+              set runSafe to false.
             }
           } else
 
