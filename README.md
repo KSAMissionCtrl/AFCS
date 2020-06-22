@@ -8,6 +8,23 @@ Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Change Log
 
+**Ascension Mk1 Flight 13** (6/23/20)
+
+AFCS:
+  - [boot.ks] now both the `exe` and `cmd` commands for executing scripts halt further execution if a missing file is found, instead of just the `run` command
+  - [logger.ks] fixes a small chance occurrence that when re-entring the atmosphere the check at the start of the logging function for <70km will come back false but a physics tick or few later due to instruction size by the time the code gets to the <70km check at the bottom of the function it can be true and try to access variables that were not set by the first check
+  
+Operations:
+  - Change in how the LES tower abort routine handles switching to a return state
+  - The `sleep` timer that handles logging now actually uses the `logInterval` variable
+  - Control check start time adjusted for newer fully-actuating fins
+  - Switch to alternator power now happens after launch clamp is confirmed released
+  - Ascent guidance modified for two-phase flight and to align with current mission ascent profile
+  - Removal of all `wait` timers
+  - MaxQ monitoring during ascent can be restarted if the rocket starts gaining dynamic pressure again
+  - Launch time and part management updated for current mission
+  - Radiation sensor logging output now remains consisten in mrad/h and handles "nominal" status report
+
 **Ascension Mk1 Flight 12** (3/20/20)
 
 AFCS:
