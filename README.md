@@ -8,6 +8,13 @@ Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Change Log
 
+**Ascension Mk1 Flight 14** (7/16/20)
+
+Operations:
+  - Adjusted launch time and flight guidance
+  - Radiation logging now takes into consideration "nominal" report for external sensor as well
+  - Overall based on Flight 12 operations with improvements from Flight 13
+
 **Ascension Mk1 Flight 13** (6/23/20)
 
 AFCS:
