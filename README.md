@@ -8,6 +8,14 @@ Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Change Log
 
+**Progeny Mk7-B Flight 1** (8/14/20)
+
+Operations:
+  - Brought ops files up to date with general improvements made during Ascension launches
+  - Better handling of support arm retraction & check for new 4th arm
+  - Less pitch-over at start to remove gimbal lock
+  - Adjusted launch time and flight guidance
+
 **Ascension Mk1 Flight 14** (7/16/20)
 
 Operations:
