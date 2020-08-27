@@ -8,6 +8,19 @@ Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Change Log
 
+**Progeny Mk7-B Flight 2** (8/27/20)
+
+AFCS:
+  - [logger.ks] fixed atmospherics logging issue from outputting wrong values due to a type check, no longer directly changes the variables to "N/A" when outside the atmosphere
+  
+Operations:
+  - Terminology changes to operations log output & function names
+  - Added controller-based command for staging
+  - Reduced initial ascent pitch over to remove gimbal lock
+  - Stage fuel is now properly recorded
+  - Adjusted launch time
+  - Additional log output information when chute deployment happens later than planned
+
 **Progeny Mk7-B Flight 1** (8/14/20)
 
 Operations:
