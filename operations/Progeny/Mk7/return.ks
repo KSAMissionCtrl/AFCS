@@ -5,7 +5,6 @@ function saveReturn {
       kuniverse:quicksaveto(ship:name + " - Reentry").
       operations:remove("saveReturn").
     }
-    set operations["reentry"] to reentry@.
   }
 }
 function reentry {
@@ -37,7 +36,8 @@ function chuteDeploy {
   // keep track of speed and altitude
   // release chute as soon as it's safe, or as last-ditch attempt if below 1.5km
   if ship:velocity:surface:mag < chuteSafeSpeed or alt:radar < 1500 {
-    output("Safe speed for chute deployment reached @ " + round(ship:altitude/1000, 3) + "km").
+    if ship:velocity:surface:mag < chuteSafeSpeed output("Safe speed for chute deployment reached @ " + round(ship:altitude/1000, 3) + "km").
+    else if alt:radar < 1500 output("Altitude below 1.5km, emergency deployment triggered").
     s2chute:doevent("deploy chute").
     set operations["popChute"] to popChute@.
     operations:remove("chuteDeploy").
@@ -69,4 +69,5 @@ function coastToLanding {
 }
 
 set operations["saveReturn"] to saveReturn@.
+set operations["reentry"] to reentry@.
 output("Return ops loaded").

@@ -39,7 +39,7 @@ function launch {
     } else {
 
       // pitch over to remove gimbal lock before enabling guidance
-      set ship:control:pitch to -0.25.
+      set ship:control:pitch to -0.15.
       set operations["enableGuidance"] to enableGuidance@.  
 
       // begin to monitor various ascent milestones
@@ -52,9 +52,9 @@ function launch {
       sleep("datalogger", logData@, 1, true, true).
       
       // wait for first stage boost to complete
-      set operations["stageOneBoost"] to stageOneBoost@.
+      set operations["ascentBECO"] to ascentBECO@.
     }
-  } else output("Launch aborted - cause unknown").
+  }
   operations:remove("launch").
 }
 
@@ -73,28 +73,18 @@ function enableGuidance {
 }
 
 // monitor booster until flamout
-function stageOneBoost {
+function ascentBECO {
   if stageOne = "Flame-Out!" {
-    output("Stage one main boost completed, coasting to 25km").
-    operations:remove("stageOneBoost").
+    output("BECO, awaiting staging").
+    operations:remove("ascentBECO").
     unlock stageOne.
     set operations["stageOneCoast"] to stageOneCoast@.
   }
 }
 
-// coast until 25km then detach S1 & fire S2
+// wait until launch control triggers the staging
 function stageOneCoast {
-  if ship:altitude >= 25000 {
-
-    // make sure the fins are straight on decouple
-    output("Disabling guidance, arming booster parachute").
-    unlock steering.
-    s1chute:doevent("arm parachute").
-    wait 0.5.
-    decoupler:doevent("decoupler staging").
-    output("Stage one booster decoupled").
-    kuniverse:quicksave().
-
+  if currStage = 2 {
     lfo:doevent("activate engine").
     wait 0.01.
 
@@ -102,9 +92,9 @@ function stageOneCoast {
     if stageTwo = "Flame-Out!" and throttle > 0 {
       setAbort(true, "L/FO ignition failure").
     } else {
-      output("Stage two boost started").
+      output("MES-1").
       for batt in batts if batt:hasevent("Disconnect Battery") batt:doevent("Disconnect Battery").
-      set operations["boostMECO1"] to boostMECO1@.
+      set operations["ascentMECO1"] to ascentMECO1@.
       lock pitch to 5.10666E-9 * ship:altitude ^ 2 - 0.00112976 * ship:altitude + 90.0183.
       lock steering to heading(hdgHold, pitch).
     }
@@ -113,7 +103,7 @@ function stageOneCoast {
 }
 
 // powered flight up to space
-function boostMECO1 {
+function ascentMECO1 {
   if ship:altitude >= 70000 {
     output("MECO-1, space reached").
     for batt in batts if batt:hasevent("Connect Battery") batt:doevent("Connect Battery").
@@ -122,15 +112,11 @@ function boostMECO1 {
     unlock throttle.
     unlock steering.
     set operations["apokee"] to apokee@.
-    operations:remove("boostMECO1").
+    operations:remove("ascentMECO1").
     operations:remove("maxQmonitor").
     operations:remove("maxQcheck").
     operations:remove("boostCutOff").
     when kuniverse:canquicksave then kuniverse:quicksaveto(ship:name + " - Space").
-    ship:partstagged("gyro")[0]:getmodule("ModuleReactionWheel"):setfield("reaction wheel authority", 100).
-    sas on.
-    wait 0.01.
-    set sasmode to "prograde".
   }
 }
 
@@ -170,13 +156,10 @@ function boostCutOff {
     unlock steering.
     set operations["apokee"] to apokee@.
     set operations["space"] to space@.
-    operations:remove("boostMECO1").
+    operations:remove("ascentMECO1").
     operations:remove("boostCutOff").
     operations:remove("maxQmonitor").
     operations:remove("maxQcheck").
-    ship:partstagged("gyro")[0]:getmodule("ModuleReactionWheel"):setfield("reaction wheel authority", 100).
-    sas on.
-    set sasmode to "prograde".
   }
 }
 function space {

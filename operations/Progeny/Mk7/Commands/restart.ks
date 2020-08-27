@@ -4,8 +4,11 @@ lfo:doevent("activate engine").
 wait 0.1.
 if stageTwo = "Flame-Out!" and throttle > 0 {
   setAbort(true, "L/FO ignition failure").
+}
+else if stageTwo = "Flame-Out!" and throttle > 0 {
+  setAbort(true, "L/FO ignition failure, throttle failed to open").
 } else {
-  output("Reignition on Ospray engine").
+  output("MES-2").
   for batt in batts if batt:hasevent("Disconnect Battery") batt:doevent("Disconnect Battery").
   set operations["MECO2"] to MECO2@.
 }

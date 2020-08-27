@@ -6,9 +6,10 @@ set maxQ to 0.
 set hdgHold to 90.
 lock currthrottle to 1.
 set currEC to 0.
+set currStage to 1.
 
 // initialize volatile variables
-declr("launchTime", 123687000).
+declr("launchTime", 124812840).
 
 // keep track of part status 
 lock stageOne to ship:partstagged("btron2")[0]:getmodule("ModuleEnginesFX"):getfield("status").
@@ -42,7 +43,8 @@ set getter("addlLogData")["Total Fuel (u)"] to {
   return ship:solidfuel + ship:liquidfuel + ship:oxidizer.
 }.
 set getter("addlLogData")["Stage Fuel (u)"] to {
-  return stage:solidfuel + stage:liquidfuel + stage:oxidizer.
+  if currStage = 1 return ship:solidfuel.
+  else return ship:liquidfuel + ship:oxidizer.
 }.
 initLog().
 function logData {
@@ -75,7 +77,7 @@ function awaitTerminalCount {
 }
 set operations["awaitTerminalCount"] to awaitTerminalCount@.
 
-// retract service tower, switch to internal power, start doing battery drain checks, ignition timing and set for control check
+// retract service tower, switch to internal power, start doing battery drain checks, ignition timing and set for support arm retract
 function terminalCount {
   output("Terminal count begun, monitoring EC levels").
   if ship:partstagged("tower"):length serviceTower:doevent("release clamp").
