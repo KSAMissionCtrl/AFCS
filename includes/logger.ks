@@ -139,13 +139,13 @@ function logTlm {
     SET mach TO SQRT(heatCapacityRatio * jPerKgK * atmTemp).
     set atmDencity to atmDencity*1000.
   } else {
-    set dragForce to "N/A".
-    set newAtmPressure to "N/A".
-    set atmDencity to "N/A".
-    set dragCoef to "N/A".
-    set atmMolarMass to "N/A".
-    set atmTemp to "N/A".
-    set mach to "N/A".
+    set dragForce to 0.
+    set newAtmPressure to 0.
+    set atmDencity to 0.
+    set dragCoef to 0.
+    set atmMolarMass to 0.
+    set atmTemp to 0.
+    set mach to 0.
   }
 
   // calculate the new gravity value
@@ -172,6 +172,23 @@ function logTlm {
   set EClvl to ship:electriccharge.
   if getter("nonRechargeable") set ECNRlvl to ship:electricchargenonrechargeable.
   else set ECNRlvl to 0.
+
+  // check for out of atmosphere
+  if ship:altitude > 70000 {
+    set dynpress to "N/A".
+    set atmPress to "N/A".
+    set atmDensity to "N/A".
+    set atmMM to "N/A".
+    set atmK to "N/A".
+    set machVel to "N/A".
+  } else {
+    set dynpress to ship:Q * constant:ATMtokPa.
+    set atmPress to newAtmPressure.
+    set atmDensity to atmDencity.
+    set atmMM to atmMolarMass.
+    set atmK to atmTemp.
+    set machVel to mach.
+  }
   
   // log all the default data
   set datalog to floor(time:seconds) + "," +
@@ -179,12 +196,12 @@ function logTlm {
                  compass_for(ship) + "," +
                  pitch_for(ship) + "," +
                  roll_for(ship) + "," +
-                 (ship:Q * constant:ATMtokPa) + "," +
-                 newAtmPressure + "," +
-                 atmDencity + "," +
-                 atmMolarMass + "," +
-                 atmTemp + "," +
-                 mach + "," +
+                 dynPress + "," +
+                 atmPress + "," +
+                 atmDensity + "," +
+                 atmMM + "," +
+                 atmK + "," +
+                 machVel + "," +
                  ship:mass + "," +
                  NEW_vertical_AOA*-1 + "," +
                  ship:altitude + "," +
@@ -216,14 +233,12 @@ function logTlm {
 
   // taken from u/nuggreat via https://github.com/nuggreat/kOS-scripts/blob/master/logging_atm.ks
   if ship:altitude < 70000 and newVars {
-
-    // make sure no strings are set as numbers
-    if newVel:isType("Scalar") SET preVel TO newVel.
-    if newTime:isType("Scalar") SET preTime TO newTime.
-    if newGravVec:isType("Scalar") SET preGravVec TO newGravVec.
-    if newForeVec:isType("Scalar") SET preForeVec TO newForeVec.
-    if newMass:isType("Scalar") SET preMass TO newMass.
-    if newDynamicP:isType("Scalar") SET preDynamicP TO newDynamicP.
-    if newAtmPressure:isType("Scalar") SET preAtmPressure TO newAtmPressure.
+    SET preVel TO newVel.
+    SET preTime TO newTime.
+    SET preGravVec TO newGravVec.
+    SET preForeVec TO newForeVec.
+    SET preMass TO newMass.
+    SET preDynamicP TO newDynamicP.
+    SET preAtmPressure TO newAtmPressure.
   }
 }
