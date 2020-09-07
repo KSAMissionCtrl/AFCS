@@ -8,6 +8,16 @@ Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Change Log
 
+**AFCS v1.0.0** (9/7/20)
+
+- [boot.ks] New flag defines to use with `sleep()` that will make it easier to remember what the two boolean values do
+- [boot.ks] `copyName` variable changed to `fileName` to make it clearer what operation is being performed - no file is being copied it was just saving the name for use later
+- [boot.ks] note included to raise awareness of [issue #1](https://github.com/KSAMissionCtrl/AFCS/issues/1)
+- [boot.ks] `list` command now shows file sizes in addition to file names in a given directory
+- [boot.ks] `reboot` now writes volatile data to memory before rebooting instead of relying on the user to do so first
+- [boot.ks] new command `disconnect` - see [this issue](https://github.com/KSAMissionCtrl/AFCS/issues/3) for more details
+- [logger.ks] atmospheric calculations are now more accurate
+
 **Progeny Mk7-B Flight 2** (8/27/20)
 
 AFCS:
