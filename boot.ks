@@ -10,6 +10,12 @@ set runSafe to true.
 set commLink to false.
 set blackout to false.
 
+// preset flags for sleep() use
+set RELATIVE_TIME to true.
+set ABSOLUTE_TIME to false.
+set PERSIST_Y to true.
+set PERSIST_N to false.
+
 // ensure all systems ready
 wait until ship:unpacked.
 
@@ -30,6 +36,7 @@ if ship:partstagged("hibernationCtrl"):length {
     ship:partstagged(core:tag)[0]:getmodule("ModuleGenerator"):doevent("Activate CPU").
   }
 }
+
 
 /////////////
 // Functions
@@ -59,11 +66,11 @@ function opsRun {
 
                 // if we are loading from a directory on the archive, only use the filename
                 if cmd[1]:contains("/") {
-                  set copyName to cmd[1]:split("/").
-                  set copyName to copyName[copyName:length-1].
-                } else set copyName to cmd[1].
-                copypath("0:" + cmd[1] + ".ks", "/cmd/" + copyName + ".ks").
-                output("Instruction onload complete for " + copyName).
+                  set fileName to cmd[1]:split("/").
+                  set fileName to fileName[fileName:length-1].
+                } else set fileName to cmd[1].
+                copypath("0:" + cmd[1] + ".ks", "/cmd/" + fileName + ".ks").
+                output("Instruction onload complete for " + fileName).
               } else {
                 output("Could not find file " + cmd[1]).
               }
@@ -106,6 +113,7 @@ function opsRun {
           } else 
 
           // run a stored file that we only want to execute this wake period
+          // NOTE: calling the same file after loading a new one of the same name during the same run period will not pick up changes!
           if cmd[0] = "cmd" {
             if core:volume:exists("/cmd/" + cmd[1] + ".ks") {
               set opTime to time:seconds.
@@ -118,15 +126,16 @@ function opsRun {
           } else
 
           // run a file that we only want to execute once from the archive and not store to run again
+          // NOTE: calling the same file after making changes on the archive during the same run period will not pick up changes!
           if cmd[0] = "exe" {
             if archive:exists(cmd[1] + ".ks") {
               if cmd[1]:contains("/") {
-                set copyName to cmd[1]:split("/").
-                set copyName to copyName[copyName:length-1].
-              } else set copyName to cmd[1].
+                set fileName to cmd[1]:split("/").
+                set fileName to fileName[fileName:length-1].
+              } else set fileName to cmd[1].
               set opTime to time:seconds.
               runpath("0:" + cmd[1] + ".ks").
-              output("Instruction execution complete for " + copyName  + " (" + round(time:seconds - opTime,2) + "ms)").
+              output("Instruction execution complete for " + fileName  + " (" + round(time:seconds - opTime,2) + "ms)").
             } else {
               output("Could not find " + cmd[1]).
               set runSafe to false.
@@ -156,20 +165,29 @@ function opsRun {
 
           // print to console (not log) all files in a directory
           if cmd[0] = "list" {
-            if core:volume:exists("/" + cmd[1]) print core:volume:open("/" + cmd[1]):list.
-            else print "could not find directory".
+            if cmd:length > 1 and core:volume:exists("/" + cmd[1]) {
+              cd(cmd[1]).
+              list files.
+              cd(core:volume:root).
+            }
+            else if cmd:length > 1 print "could not find directory".
+            else print "please enter directory name".
           } else
 
           // reboot the cpu
           if cmd[0] = "reboot" {
+            writeToMemory().
             archive:delete(ship:name + ".ops.ks").
             reboot.
           } else
 
-          // save all the current volatile data
-          // WARNING!! Destroys delegate references. This should only be used as an option prior to reboot command
-          if cmd[0] = "save" {
+          // end this session with the probe
+          if cmd[0] = "disconnect" {
             writeToMemory().
+            print "Connection closed. Please return to Tracking Station or Space Center".
+            archive:delete(ship:name + ".ops.ks").
+            wait 0.1.
+            kuniverse:pause().
           } else output("Unknown command " + cmd[0] + ":" + cmd[1]).
         }
         set runSafe to true.
@@ -470,6 +488,7 @@ function stashmit {
   }
 }
 
+
 /////////////////////////
 // Begin system boot ops
 /////////////////////////
@@ -532,6 +551,7 @@ if getter("lastDay") <> time:day stashmit("[" + time:calendar + "]").
 setter("lastDay", time:day).
 
 output("System boot complete").
+
 
 /////////////////
 // Begin ops run

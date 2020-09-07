@@ -19,29 +19,17 @@ for res in resList {
 }
 
 // taken from u/nuggreat via https://github.com/nuggreat/kOS-scripts/blob/master/logging_atm.ks
-LOCAL localBody IS SHIP:BODY.
-LOCAL localAtm IS localBody:ATM.
-LOG ("time(s),altitude(m),vel(m/s),Q(kPa),,body: " + localBody:NAME) TO logPath.
+set localBody to SHIP:BODY.
+set localAtm to localBody:ATM.
 
-
-LOCAL jPerKgK IS (8314.4598/42).  //this is ideal gas constant dived by the molecular mass of the bodies atmosphere
-LOCAL heatCapacityRatio IS 1.2.
+set jPerKgK to (8314.4598/42).  //this is ideal gas constant dived by the molecular mass of the bodies atmosphere
+set heatCapacityRatio to 1.2.
 IF localBody = KERBIN {
 	SET jPerKgK TO (8314.4598/28.9644).
 	SET heatCapacityRatio TO 1.4.
 }
 
-LOCAL preVel IS SHIP:VELOCITY:SURFACE.
-LOCAL preTime IS TIME:SECONDS.
-LOCAL preGravVec IS localBody:POSITION - SHIP:POSITION.
-LOCAL preForeVec IS SHIP:FACING:FOREVECTOR.
-LOCAL preMass IS SHIP:MASS.
-LOCAL preDynamicP IS SHIP:Q * CONSTANT:ATMTOKPA.
-LOCAL preAtmPressure IS MAX(localAtm:ALTITUDEPRESSURE(ALTITUDE) * CONSTANT:ATMTOKPA,0.000001).
-LOCAL atmDencity IS preDynamicP / preVel:SQRMAGNITUDE.
-LOCAL atmMolarMass IS atmDencity / preAtmPressure.
-
-LOCAL burnCoeff IS 0.
+set burnCoeff to 0.
 IF active_engine { SET burnCoeff TO 1.}
 
 ////////////
@@ -99,6 +87,22 @@ function initLog {
 // log the telemetry data each - whatever. Calling program will decide how often to log
 function logTlm {
   parameter met.
+
+  // initialize variables if this is the first run
+  if met = 0 {
+    set preVel to SHIP:VELOCITY:SURFACE.
+    set preTime to TIME:SECONDS.
+    set preGravVec to localBody:POSITION - SHIP:POSITION.
+    set preForeVec to SHIP:FACING:FOREVECTOR.
+    set preMass to SHIP:MASS.
+    set preDynamicP to SHIP:Q * CONSTANT:ATMTOKPA.
+    set preAtmPressure to MAX(localAtm:ALTITUDEPRESSURE(ALTITUDE) * CONSTANT:ATMTOKPA,0.000001).
+    set atmDencity to preDynamicP / preVel:SQRMAGNITUDE.
+    set atmMolarMass to atmDencity / preAtmPressure.
+  }
+
+  // ensure the following calculations take place in a single physics tick
+  wait 0.001.
 
   // there is a small chance that in the physics ticks between when the first altitude check is made
   // and the second one at the end, the capsule is then below 70km. We don't want to do anything
