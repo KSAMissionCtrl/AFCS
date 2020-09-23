@@ -8,6 +8,11 @@ Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Change Log
 
+**Ascension Mk2 Flight 2** (9/23/20)
+
+- Brought up-to-date with general program advances made from previous Mk1 and Progeny Mk7 flights
+- Terminal count EC monitoring takes into account RTG output
+
 **AFCS v1.0.0** (9/7/20)
 
 - [boot.ks] New flag defines to use with `sleep()` that will make it easier to remember what the two boolean values do
