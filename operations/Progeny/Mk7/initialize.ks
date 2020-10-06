@@ -7,9 +7,10 @@ set hdgHold to 90.
 lock currthrottle to 1.
 set currEC to 0.
 set currStage to 1.
+set logInterval to 1.
 
 // initialize volatile variables
-declr("launchTime", 124812840).
+declr("launchTime", 128278800).
 
 // keep track of part status 
 lock stageOne to ship:partstagged("btron2")[0]:getmodule("ModuleEnginesFX"):getfield("status").
@@ -27,6 +28,10 @@ set supportArms to ship:partstagged("support")[0]:getmodule("modulewheeldeployme
 set batts to list(
   ship:partstagged("batt")[0]:getmodule("ModuleResourceConverter"),
   ship:partstagged("batt")[1]:getmodule("ModuleResourceConverter")
+).
+set shrouds to list(
+  ship:partstagged("lfoshroud")[0]:getmodule("ProceduralFairingDecoupler"),
+  ship:partstagged("lfoshroud")[1]:getmodule("ProceduralFairingDecoupler")
 ).
 set airbrakes to list(
   ship:partstagged("airbrake")[0]:getmodule("ModuleAeroSurface"),
@@ -86,8 +91,8 @@ function terminalCount {
   if getter("nonRechargeable") set ECNRlvl to ship:electricchargenonrechargeable.
   else set ECNRlvl to 0.
   set currEC to EClvl+ECNRlvl.
-  sleep("monitorEcDrain", monitorEcDrain@, 1, true, true).
-  sleep("retractSupportArms", retractSupportArms@, getter("launchTime") - 5, false, false).
+  sleep("monitorEcDrain", monitorEcDrain@, 1, RELATIVE_TIME, PERSIST_Y).
+  sleep("retractSupportArms", retractSupportArms@, getter("launchTime") - 5, ABSOLUTE_TIME, PERSIST_N).
   operations:remove("terminalCount").
 }
 

@@ -3,7 +3,7 @@
 function retractSupportArms {
   supportArms:doevent("retract").
   output("Support arms retracting...").
-  sleep("checkArmRetraction", checkArmRetraction@, getter("launchTime") - 1, false, false).
+  sleep("checkArmRetraction", checkArmRetraction@, getter("launchTime") - 1, ABSOLUTE_TIME, PERSIST_N).
   operations:remove("retractSupportArms").
 }
 
@@ -49,7 +49,7 @@ function launch {
 
       // begin telemetry logging with an intial entry followed by one every second
       logData().
-      sleep("datalogger", logData@, 1, true, true).
+      sleep("datalogger", logData@, logInterval, RELATIVE_TIME, PERSIST_Y).
       
       // wait for first stage boost to complete
       set operations["ascentBECO"] to ascentBECO@.
@@ -67,7 +67,7 @@ function enableGuidance {
     set ship:control:pitch to 0.
     lock pitch to 5.10666E-9 * ship:altitude ^ 2 - 0.00112976 * ship:altitude + 90.0183.
     lock steering to heading(hdgHold, pitch).
-    output("Guidance enabled").
+    output("Guidance enabled @ " + round(ship:altitude/1000, 3) + "km").
     operations:remove("enableGuidance").
   }
 }
@@ -75,30 +75,35 @@ function enableGuidance {
 // monitor booster until flamout
 function ascentBECO {
   if stageOne = "Flame-Out!" {
-    output("BECO, awaiting staging").
+    output("BECO, staging @ " + round(ship:altitude/1000, 3) + "km").
     operations:remove("ascentBECO").
     unlock stageOne.
-    set operations["stageOneCoast"] to stageOneCoast@.
+    s1chute:doevent("arm parachute").
+    sleep("shroudSplit", shroudSplit@, 0.5, RELATIVE_TIME, PERSIST_N).
   }
 }
 
-// wait until launch control triggers the staging
-function stageOneCoast {
-  if currStage = 2 {
-    lfo:doevent("activate engine").
-    wait 0.01.
+function shroudSplit {
+  for shroud in shrouds shroud:doevent("jettison fairing").
+  operations:remove("shroudSplit").
+  sleep("staging", staging@, 0.1, RELATIVE_TIME, PERSIST_N).
+}
 
-    // did we get booster activation?
-    if stageTwo = "Flame-Out!" and throttle > 0 {
-      setAbort(true, "L/FO ignition failure").
-    } else {
-      output("MES-1").
-      for batt in batts if batt:hasevent("Disconnect Battery") batt:doevent("Disconnect Battery").
-      set operations["ascentMECO1"] to ascentMECO1@.
-      lock pitch to 5.10666E-9 * ship:altitude ^ 2 - 0.00112976 * ship:altitude + 90.0183.
-      lock steering to heading(hdgHold, pitch).
-    }
-    operations:remove("stageOneCoast").
+function staging {
+  operations:remove("staging").
+  decoupler:doevent("decoupler staging").
+  kuniverse:quicksave().
+  set currStage to 2.
+  lfo:doevent("activate engine").
+  wait 0.01.
+
+  // did we get booster activation?
+  if stageTwo = "Flame-Out!" and throttle > 0 {
+    setAbort(true, "L/FO ignition failure").
+  } else {
+    output("Stage one booster decoupled, MES-1 @ " + round(ship:altitude/1000, 3) + "km").
+    for batt in batts if batt:hasevent("Disconnect Battery") batt:doevent("Disconnect Battery").
+    set operations["ascentMECO1"] to ascentMECO1@.
   }
 }
 
@@ -177,6 +182,6 @@ function apokee {
 }
 
 // terminal count begins 2min prior to launch
-sleep("terminalCount", terminalCount@, getter("launchTime") - 120, false, false).
-sleep("launch", launch@, getter("launchTime"), false, false).
+sleep("terminalCount", terminalCount@, getter("launchTime") - 120, ABSOLUTE_TIME, PERSIST_N).
+sleep("launch", launch@, getter("launchTime"), ABSOLUTE_TIME, PERSIST_N).
 output("Launch/Ascent ops ready, awaiting terminal count").
