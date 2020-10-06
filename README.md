@@ -8,6 +8,13 @@ Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Change Log
 
+**Progeny Mk7-B Flight 3** (10/6/20)
+
+- Added altitude callouts to log output
+- Staging command updated to split shroud and still valid but ascent code in place to hot-stage automatically at BECO
+- Data logger timeout now uses defined value rather than magic number
+- General code update to make use of improvements made in flights since last Progeny launch
+
 **AFCS v1.1.0** (10/5/20)
 
 - [boot.ks] Fix: Mis-spelling a single-word command like `disconnect` or `reboot` would crash the program
