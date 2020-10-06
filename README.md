@@ -8,6 +8,13 @@ Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Change Log
 
+**AFCS v1.1.0** (10/5/20)
+
+- [boot.ks] Fix: Mis-spelling a single-word command like `disconnect` or `reboot` would crash the program
+- [boot.ks] Change: No longer saving data for timers and ops since function handles cannot be serialized
+- [boot.ks] Change: Auto-save on `disconnect` so the last-active state of the spacecraft is preserved
+- [logger.ks] Fix: Starting to log data prior to lift off would crash the program due to uninitialized variables that only happens at L-0
+
 **Ascension Mk2 Flight 2** (9/23/20)
 
 - Brought up-to-date with general program advances made from previous Mk1 and Progeny Mk7 flights
