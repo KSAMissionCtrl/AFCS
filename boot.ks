@@ -186,9 +186,10 @@ function opsRun {
             writeToMemory().
             print "Connection closed. Please return to Tracking Station or Space Center".
             archive:delete(ship:name + ".ops.ks").
+            when kuniverse:canquicksave then kuniverse:quicksaveto(ship:name + " - Disconnect @ " + time:calendar + " [" + time:clock + "]").
             wait 0.1.
             kuniverse:pause().
-          } else output("Unknown command " + cmd[0] + ":" + cmd[1]).
+          } else output("Unknown command " + cmd[0]).
         }
         set runSafe to true.
         archive:delete(ship:name + ".ops.ks").
@@ -517,8 +518,6 @@ reqDirCheck().
 
 // load any persistent data and operations
 if core:volume:exists("/mem/varData.json") set varData to readjson("/mem/varData.json").
-if core:volume:exists("/mem/opsData.json") set operations to readjson("/mem/opsData.json").
-if core:volume:exists("/mem/timerData.json") set sleepTimers to readjson("/mem/timerData.json").
 if core:volume:open("/ops"):size {
   output("Loading onboard operations").
   for opsFile in core:volume:open("/ops"):list:values runpath("/ops/" + opsFile).

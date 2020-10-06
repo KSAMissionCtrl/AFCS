@@ -110,7 +110,7 @@ function logTlm {
   set newVars to false.
 
   // taken from u/nuggreat via https://github.com/nuggreat/kOS-scripts/blob/master/logging_atm.ks
-  if ship:altitude < 70000 {
+  if ship:altitude < 70000 and met >= 0 {
     set newVars to true.
     SET newTime TO TIME:SECONDS.
     SET newAlt TO SHIP:ALTITUDE.
@@ -177,8 +177,8 @@ function logTlm {
   if getter("nonRechargeable") set ECNRlvl to ship:electricchargenonrechargeable.
   else set ECNRlvl to 0.
 
-  // check for out of atmosphere
-  if ship:altitude > 70000 {
+  // check for out of atmosphere or prior to lift off
+  if ship:altitude > 70000 or met < 0 {
     set dynpress to "N/A".
     set atmPress to "N/A".
     set atmDensity to "N/A".
