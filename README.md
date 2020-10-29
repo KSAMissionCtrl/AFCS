@@ -8,6 +8,14 @@ Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Change Log
 
+**Progeny Mk7-B Flight 4** (10/29/20)
+
+- SAS control modified for probe use instead of main vessel use
+- Various typos fixed in code comments and log output
+- Guidance routines updated for mission ascent profile
+- Ascent routines updated for mission staging profile
+- Probe deployment & initialization based on Kerbin II mission
+
 **Progeny Mk7-B Flight 3** (10/6/20)
 
 - Added altitude callouts to log output
