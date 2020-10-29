@@ -1,16 +1,15 @@
 // initialize non-volatile variables
 set launchAbort to false.
-set chuteSpeed to 0.
-set chuteSafeSpeed to 490.
 set maxQ to 0.
-set hdgHold to 90.
+set hdgHold to 34.
 lock currthrottle to 1.
+lock pitch to 89.8.
 set currEC to 0.
 set currStage to 1.
 set logInterval to 1.
 
 // initialize volatile variables
-declr("launchTime", 128278800).
+declr("launchTime", 130254300).
 
 // keep track of part status 
 lock stageOne to ship:partstagged("btron2")[0]:getmodule("ModuleEnginesFX"):getfield("status").
@@ -25,6 +24,13 @@ set srb to ship:partstagged("btron2")[0]:getmodule("ModuleEnginesFX").
 set decoupler to ship:partstagged("decoupler")[0]:getmodule("ModuleDecouple").
 set lfo to ship:partstagged("ospray")[0]:getmodule("ModuleEnginesFX").
 set supportArms to ship:partstagged("support")[0]:getmodule("modulewheeldeployment").
+set serviceTower to ship:partstagged("tower")[0]:getmodule("LaunchClamp").
+set launchClamp to ship:partstagged("clamp")[0]:getmodule("LaunchClamp").
+set s1Chute to ship:partstagged("s1chute")[0]:getmodule("RealChuteModule").
+set probeCore to processor("bot").
+set payloadDecoupler to ship:partstagged("payloadbase")[0]:getmodule("moduleDecouple").
+set probeComms to ship:partstagged("probeComm")[0]:getmodule("ModuleDeployableAntenna").
+set rtg to ship:partstagged("rtg")[0]:getmodule("ModuleAnimateGeneric").
 set batts to list(
   ship:partstagged("batt")[0]:getmodule("ModuleResourceConverter"),
   ship:partstagged("batt")[1]:getmodule("ModuleResourceConverter")
@@ -33,15 +39,17 @@ set shrouds to list(
   ship:partstagged("lfoshroud")[0]:getmodule("ProceduralFairingDecoupler"),
   ship:partstagged("lfoshroud")[1]:getmodule("ProceduralFairingDecoupler")
 ).
-set airbrakes to list(
-  ship:partstagged("airbrake")[0]:getmodule("ModuleAeroSurface"),
-  ship:partstagged("airbrake")[1]:getmodule("ModuleAeroSurface"),
-  ship:partstagged("airbrake")[2]:getmodule("ModuleAeroSurface")
+set fairings to list(
+  ship:partstagged("plf")[0]:getmodule("ProceduralFairingDecoupler"),
+  ship:partstagged("plf")[1]:getmodule("ProceduralFairingDecoupler")
 ).
-set serviceTower to ship:partstagged("tower")[0]:getmodule("LaunchClamp").
-set launchClamp to ship:partstagged("clamp")[0]:getmodule("LaunchClamp").
-set s1Chute to ship:partstagged("s1chute")[0]:getmodule("RealChuteModule").
-set s2Chute to ship:partstagged("S2chute")[0]:getmodule("RealChuteModule").
+
+// set the probe's boot & init files, copy them over and shut it down
+set probeCore:bootfilename to "boot/boot.ks".
+copypath("0:/boot/boot.ks", probeCore:volume:name + ":/boot/boot.ks").
+copypath("0:/ops/Progeny Mk7-B Flight 4/probeInit.ks", probeCore:volume:name + ":/ops/probeInit.ks").
+wait 0.001.
+probeCore:deactivate.
 
 // add any custom logging fields, then call for header write and setup log call
 set getter("addlLogData")["Total Fuel (u)"] to {
