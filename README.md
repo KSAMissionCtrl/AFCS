@@ -8,6 +8,11 @@ Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Change Log
 
+**Kerbin II Operations Update** (12/16/20)
+
+- New spacecraft commands for science and battery operation
+- Scripts for de-orbit maneuver and re-entry procedures
+
 **Progeny Mk7-B Flight 4** (10/29/20)
 
 - SAS control modified for probe use instead of main vessel use
