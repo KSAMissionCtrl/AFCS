@@ -246,3 +246,10 @@ function logTlm {
     SET preAtmPressure TO newAtmPressure.
   }
 }
+
+// remove all or one key from the lexicon
+function removeAddlLogData {
+  parameter dataKey is "".
+  if dataKey = "" getter("addlLogData"):clear.
+  else getter("addlLogData"):remove(dataKey).
+}

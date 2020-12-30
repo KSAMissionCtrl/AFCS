@@ -25,6 +25,11 @@ function pointingAt {
   parameter vector.
   return vang(ship:facing:forevector,vector) <2.
 }
+// used to determine how far from the given vector the ship is pointing
+function pointingFrom {
+  parameter vector.
+  return vang(ship:facing:forevector,vector).
+}
 
 // from the KSLib
 // https://github.com/KSP-KOS/KSLib/blob/master/library/lib_circle_nav.ks
