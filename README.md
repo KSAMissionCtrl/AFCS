@@ -1,9 +1,11 @@
 # AFCS
-Automated Flight Control System for vessels in Kerbal Space Program using kOS
+Automated Flight Control System providing a generic operational framework for vessels in Kerbal Space Program using kOS
 
-## Systems
-**Logger** - monitors and stores various flight parameters, outputs generic status updates   
+See [the wiki](https://github.com/KSAMissionCtrl/AFCS/wiki) for details
+
+## Included Systems
 **Boot** - sets up the environment and runs operations uploaded to the probe core   
+**Logger** - monitors and stores various flight parameters, outputs generic status updates   
 **HelpFunc** - includes useful general support functions for various operational aspects
 
 ## Change Log
