@@ -8,6 +8,11 @@ Automated Flight Control System for vessels in Kerbal Space Program using kOS
 
 ## Change Log
 
+**AFCS v1.2.0** (12/30/20)
+
+- [helpFunc.ks] New helper function `pointingFrom` that will return the raw value of the difference between the current steering angle and the passed target angle. Companion to the already-existing `pointingAt` function that looks at a similar value but makes a determination and returns T/F instead of the value
+- [logger.ks] New utility function `removeAddlLogData` that can be used to delete a key from the lexicon or even all the keys if not passed a key. This is useful for when a spacecraft changes configuration, such as decoupling a segment that included parts that were being accessed for data to be logged
+
 **Kerbin II Operations Update** (12/16/20)
 
 - New spacecraft commands for science and battery operation
