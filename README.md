@@ -1,5 +1,5 @@
 # AFCS
-Automated Flight Control System providing a generic operational framework for vessels in Kerbal Space Program using kOS
+Automated Flight Control System providing a realistic command interface and generic operational framework for vessels in Kerbal Space Program using kOS
 
 See [the wiki](https://github.com/KSAMissionCtrl/AFCS/wiki) for details
 
@@ -7,6 +7,22 @@ See [the wiki](https://github.com/KSAMissionCtrl/AFCS/wiki) for details
 **Boot** - sets up the environment and runs operations uploaded to the probe core   
 **Logger** - monitors and stores various flight parameters, outputs generic status updates   
 **HelpFunc** - includes useful general support functions for various operational aspects
+
+## Command Interface
+Control of the spacecraft involves three separate programs working together to provide a "command uplink" that relays scripts to the vessel to be executed by the AFCS:
+
+* TelNet - although the in-game console can also be used, this is a better option for those that have multiple screens. Details on how to setup TelNet are included in the [kOS docs](http://ksp-kos.github.io/KOS_DOC/general/telnet.html)
+* Text Editor - any text editor will do, and allows you to edit the list of commands that will be sent to the spacecraft
+* Batch File - [this .BAT](https://gist.github.com/KSAMissionCtrl/5b8008d0670a4c839f14c2e6f56db745) is run when using the AFCS and changes the name of the command file to include the name of the vessel so that the AFCS sees it on the Archive and grabs it for parsing
+
+Video demonstrations of the command uplink can be found in [this twitter thread](https://twitter.com/DKerman_KSA/status/1314284667235897350) that also gives some details of the commands that can be used.
+
+## Operational Framework
+By itself, the AFCS does nothing. It simply creates the environment for the spacecraft to operate from and still needs mission-specific scripts for the spacecraft to carry out its objectives. It will continuously run fuctions that are stored in its operation queue which allows for the spacecraft to perform many parallel functions while keeping these operations encapsulated in code and easy to read and maintain, allowing for operations to be ported to other vessels in bits and pieces to share code. Here is a flowchart for how the vessel operates under the AFCS (slightly outdated - backup ops refers to any ops stored on the vessel):
+
+![](https://github.com/KSAMissionCtrl/AFCS/blob/master/bootFlow.png)
+
+Have a look in the [Operations folder](https://github.com/KSAMissionCtrl/AFCS/tree/master/operations) for mission examples to get a better idea of how the AFCS and its accompanying libraries can be used for anything from sub-orbital to orbital to kerbed and unkerbed missions. Past commits include the operational code for previous missions as well.
 
 ## Change Log
 
