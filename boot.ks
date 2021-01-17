@@ -23,8 +23,8 @@ wait until ship:unpacked.
 set cmdLink to ship:controlpart:getmodule("modulecommand").
 set commLinks to lexicon().
 for part in ship:parts {
-  if part:hasmodule("moduledatatransmitter") set commLinks[part:tag] to part:getmodule("moduledatatransmitter").
-  if part:hasmodule("moduledatatransmitterfeedeable") set commLinks[part:tag] to part:getmodule("moduledatatransmitterfeedeable").
+  if part:hasmodule("moduledatatransmitter") set commLinks[part:tag] to part.
+  if part:hasmodule("moduledatatransmitterfeedeable") set commLinks[part:tag] to part.
 }
 
 // get a hibernation controller?
@@ -325,17 +325,16 @@ function setCommStatus {
 
   // turning of every comm device or just a specific one?
   if tag = "all" {
-    for comms in commLinks:values if comms:hasevent(connection) comms:doevent(connection).
+    for comms in commLinks:values {
+      if comms:hasmodule("ModuleDeployableAntenna") {
+        if comms:getmodule("ModuleDeployableAntenna"):hasevent(connection) comms:getmodule("ModuleDeployableAntenna"):doevent(connection).
+      } 
+    }
   } else {
-    if commLinks[tag]:hasevent(connection) commLinks[tag]:doevent(connection).
+    if commLinks[tag]:hasmodule("ModuleDeployableAntenna") {
+      if commLinks[tag]:getmodule("ModuleDeployableAntenna"):hasevent(connection) commLinks[tag]:getmodule("ModuleDeployableAntenna"):doevent(connection).
+    } 
   }
-}
-
-// check for any active comms
-function getCommStatus {
-  set status to false.
-  for comms in commLinks:values if comms:hasevent("Retract Antenna") or not comms:hasfield("Status") set status to true.
-  return status.
 }
 
 // define a variable with this value only if it doesn't already exist
@@ -370,7 +369,7 @@ function hibernate {
   if canHibernate {
 
     // set comms as requested
-    if not comms setCommStatus("Deactivate").
+    if not comms setCommStatus("retract antenna").
 
     // define the file that will run once after coming out of hibernation
     if wakefile:length setter("wakeFile", wakeFile).
@@ -531,10 +530,11 @@ declr("commRanges", lexicon()).
 
 // find and store all comm ranges if we haven't already
 if not getter("commRanges"):length {
-  for comm in commLinks:keys {
+  for comm in commLinks:values {
 
     // store the antenna range in meters
-    set rangeInfo to commLinks[comm]:getfield("Antenna Rating"):split(" ")[0].
+    if comm:hasmodule("moduledatatransmitter") set rangeInfo to comm:getmodule("moduledatatransmitter"):getfield("Antenna Rating"):split(" ")[0].
+    if comm:hasmodule("moduledatatransmitterfeedeable") set rangeInfo to comm:getmodule("moduledatatransmitterfeedeable"):getfield("Antenna Rating"):split(" ")[0].
     if rangeInfo:contains("k") set rangeScale to 1000.
     if rangeInfo:contains("M") set rangeScale to 1000000.
     if rangeInfo:contains("G") set rangeScale to 1000000000.
