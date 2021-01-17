@@ -26,6 +26,12 @@ Have a look in the [Operations folder](https://github.com/KSAMissionCtrl/AFCS/tr
 
 ## Change Log
 
+**AFCS v1.2.1** (1/17/21)
+
+- [boot.ks] Internal change to how communication parts are stored. Now the whole part is saved not just the transmitter module. This lets the control system properly deploy/retract any antennas that are specified through `setCommStatus()`
+- [boot.ks] Fixed issue that would not properly retract antenna when entering hibernation
+- [boot.ks] Removed `getCommStatus()` as it is not possible in general to determine whether a comm antenna is off or on (unless it can be deployed/retracted)
+
 **AFCS v1.2.0** (12/30/20)
 
 - [helpFunc.ks] New helper function `pointingFrom` that will return the raw value of the difference between the current steering angle and the passed target angle. Companion to the already-existing `pointingAt` function that looks at a similar value but makes a determination and returns T/F instead of the value
