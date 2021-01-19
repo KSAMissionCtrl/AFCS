@@ -2,7 +2,7 @@ set chuteSafeSpeed to 470.
 set chuteSpeed to 0.
 set maxQ to 0.
 when maxQ > ship:q then output("MaxQ: " + round(ship:Q * constant:ATMtokPa, 3) + "kPa @ " + round(ship:altitude/1000, 3) + "km").
-set chute to ship:partstagged("chutecomms")[0]:getmodule("RealChuteModule").
+set chute to ship:partstagged("chutecomms")[0]:getmodule("RealChuteFAR").
 
 function ascentAbort {
   unlock stageOne.

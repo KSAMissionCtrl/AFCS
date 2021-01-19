@@ -7,7 +7,7 @@ set rdyToHibernate to false.
 lock throttle to 1.
 
 // initialize volatile variables
-declr("launchTime", 88950600).
+declr("launchTime", 137427000).
 declr("radBelt", 0).
 declr("innerAlt", 0).
 declr("outerAlt", 0).
@@ -20,38 +20,32 @@ lock stageThree to ship:partstagged("lfo1")[0]:getmodule("ModuleEnginesFX"):getf
 lock radlvl to ship:partstagged("radsense")[0]:getmodule("Sensor"):getfield("Radiation").
 
 // get parts now so searching doesn't hold up main program execution
-set srb1 to ship:partstagged("srb1m")[0]:getmodule("ModuleEnginesFX").
-set s1decoupler to ship:partstagged("s1decoupler")[0]:getmodule("ModuleDecouple").
 set s1fins to list(
-  ship:partstagged("s1fin")[0]:getmodule("Kaboom"),
-  ship:partstagged("s1fin")[1]:getmodule("Kaboom"),
-  ship:partstagged("s1fin")[2]:getmodule("Kaboom")
+  ship:partstagged("s1fin")[0]:getmodule("ModuleKaboom"),
+  ship:partstagged("s1fin")[1]:getmodule("ModuleKaboom"),
+  ship:partstagged("s1fin")[2]:getmodule("ModuleKaboom")
 ).
-set radDecouplers to list(
-  ship:partstagged("radDecoupler")[0]:getmodule("ModuleAnchoredDecoupler"),
-  ship:partstagged("radDecoupler")[1]:getmodule("ModuleAnchoredDecoupler"),
-  ship:partstagged("radDecoupler")[2]:getmodule("ModuleAnchoredDecoupler"),
-  ship:partstagged("radDecoupler")[3]:getmodule("ModuleAnchoredDecoupler")
-).
-set srb2 to ship:partstagged("srb2")[0]:getmodule("ModuleEnginesFX").
-set s2decoupler to ship:partstagged("s2decoupler")[0]:getmodule("ModuleDecouple").
 set s2fins to list(
-  ship:partstagged("s2fin")[0]:getmodule("Kaboom"),
-  ship:partstagged("s2fin")[1]:getmodule("Kaboom"),
-  ship:partstagged("s2fin")[2]:getmodule("Kaboom")
+  ship:partstagged("s2fin")[0]:getmodule("ModuleKaboom"),
+  ship:partstagged("s2fin")[1]:getmodule("ModuleKaboom"),
+  ship:partstagged("s2fin")[2]:getmodule("ModuleKaboom")
 ).
-set lfo1 to ship:partstagged("lfo1")[0]:getmodule("ModuleEnginesFX").
 set fairings to list(
-  ship:partstagged("fairing")[0]:getmodule("ModuleDecouple"),
-  ship:partstagged("fairing")[1]:getmodule("ModuleDecouple")
+  ship:partstagged("fairing")[0]:getmodule("ModuleAnimatedDecoupler"),
+  ship:partstagged("fairing")[1]:getmodule("ModuleAnimatedDecoupler")
 ).
 
 // add any custom logging fields, then call for header write and setup log call
-set getter("addlLogData")["Rad/hr"] to {
-  if radlvl <> "nominal" {
-    set outputLvl to radlvl:split(" ")[0].
-  } else set outputLvl to radlvl.
-  return outputLvl.
+set getter("addlLogData")["mrad/hr"] to {
+  set data to "N/A".
+  if radlvl = "nominal" set data to 0.
+  else {
+    
+    // convert from rad/h to mrad/h if needed
+    if radlvl:split(" ")[1] = "mrad/h" set data to radlvl:split(" ")[0].
+    else set data to radlvl:split(" ")[0]:tonumber() * 1000.
+  }
+  return data.
 }.
 set getter("addlLogData")["Total Fuel (u)"] to {
   return ship:solidfuel + ship:liquidfuel + ship:oxidizer.

@@ -56,7 +56,7 @@ function stageOneRadialBoost {
   if stageOneRadial = "Flame-Out!" {
     unlock stageOneRadial.
     output("Stage one radial boost completed. Boosters released").
-    for decoupler in radDecouplers { decoupler:doevent("decouple"). }
+    stage. // for decoupler in radDecouplers { decoupler:doevent("decouple"). }
     operations:remove("stageOneRadialBoost").
   }
 }
@@ -73,53 +73,32 @@ function stageOneBoost {
     // get starting value for coast monitoring and switch over
     set startPitch to pitch_for(ship).
     operations:remove("stageOneBoost").
-    set operations["stageTwoCoast"] to stageTwoCoast@.
+    sleep("stageTwoIgnition", stageTwoIgnition@, 2, true, false).
   }
 }
 
 function stageOneDecouple {
   for fin in s1fins { fin:doevent("kaboom!"). }
-  s1decoupler:doevent("decouple").
+  stage. // s1decoupler:doevent("decouple").
   output("Stage one booster decoupled").
   operations:remove("stageOneDecouple").
 }
 
-function stageTwoCoast {
+function stageTwoIgnition {
+  stage. // srb2:doevent("activate engine").
+  wait 0.01.
   
-  // check for anomalous AoA
-  Set RollFactor to -1.
-  If roll < 90 {
-    if roll > -90 {
-      set RollFactor to 1.
-    }
+  // did we get booster activation?
+  if stageTwo = "Flame-Out!" {
+    setAbort(true, "stage two booster ignition failure").
+    unlock throttle.
+    runOpsFile("return").
+    ascentAbort().
+  } else {
+    output("Stage two boost started. Pitch is " + round(pitch_for(ship), 3) + ", vertical speed is " + round(ship:verticalspeed, 3) + "m/s").
+    set operations["stageTwoBoost"] to stageTwoBoost@.
   }
-  If Ship:Airspeed < 1 {
-    Set RollFactor to 0.
-  }
-  Set verticalAOAupdate to vertical_aoa()*RollFactor.
-  if abs(verticalAOAupdate) > s2AoALimit {
-    output("Angle of Attack constraint exceeded by " + round(VANG(ship:facing:vector, ship:srfprograde:vector) - s2AoALimit, 3) + " - awaiting manual staging @ " + round(startPitch-pitchLimit, 3)).
-    operations:remove("stageTwoCoast").
-    set operations["stageTwoBoostWait"] to stageTwoBoostWait@.
-  }
-  
-  if startPitch - pitch_for(ship) >= pitchLimit or ship:verticalspeed < 100 {
-    srb2:doevent("activate engine").
-    wait 0.01.
-    
-    // did we get booster activation?
-    if stageTwo = "Flame-Out!" {
-      setAbort(true, "stage two booster ignition failure").
-      operations:remove("stageTwoCoast").
-      unlock throttle.
-      runOpsFile("return").
-      ascentAbort().
-    } else {
-      output("Stage two boost started. Pitch is " + round(pitch_for(ship), 3) + ", vertical speed is " + round(ship:verticalspeed, 3) + "m/s").
-      operations:remove("stageTwoCoast").
-      set operations["stageTwoBoost"] to stageTwoBoost@.
-    }
-  }
+  operations:remove("stageTwoIgnition").
 }
 
 function stageTwoBoostWait {
@@ -144,13 +123,13 @@ function stageTwoBoost {
 
 function stageTwoDecouple {
   for fin in s2fins { fin:doevent("kaboom!"). }
-  s2decoupler:doevent("decouple").
+  stage. // s2decoupler:doevent("decouple").
   output("Stage two booster decoupled").
   operations:remove("stageTwoDecouple").
 }
 
 function stageThreeBoost {
-  lfo1:doevent("activate engine").
+  stage. // lfo1:doevent("activate engine").
   wait 0.01.
   
   // did we get booster activation?
@@ -171,6 +150,8 @@ function beco {
     output("Stage three boost completed").
     unlock throttle.
     operations:remove("beco").
+    wait 0.1.
+    when kuniverse:canquicksave then kuniverse:quicksaveto(ship:name + " - BECO").
 
     // begin hibernation cycle after 2s to ensure a final log entry is made
     sleep("beginHibernation", beginHibernation@, 2, true, false).
