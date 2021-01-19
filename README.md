@@ -1,8 +1,6 @@
 # AFCS
 Automated Flight Control System providing a realistic command interface and generic operational framework for vessels in Kerbal Space Program using kOS
 
-See [the wiki](https://github.com/KSAMissionCtrl/AFCS/wiki) for details
-
 ## Included Systems
 **Boot** - sets up the environment and runs operations uploaded to the probe core   
 **Logger** - monitors and stores various flight parameters, outputs generic status updates   
@@ -25,6 +23,15 @@ By itself, the AFCS does nothing. It simply creates the environment for the spac
 Have a look in the [Operations folder](https://github.com/KSAMissionCtrl/AFCS/tree/master/operations) for mission examples to get a better idea of how the AFCS and its accompanying libraries can be used for anything from sub-orbital to orbital to kerbed and unkerbed missions. Past commits include the operational code for previous missions as well.
 
 ## Change Log
+
+**Progeny Mk6 Block II Flight 4** (1/19/21)
+
+- Adjusted launch timing
+- Replaced specific staging instructions with `stage` command to allow for better fuel use tracking
+- Changed hibernation time back to 60s from 30s
+- Radiation belt detection routine can now handle possible scenario where rocket does not reach high enough to enter the outer belt
+- Ascent profile no longer includes a coast between first and second stages
+- Updated several system references to be compatible as this code was last used in mid-2019
 
 **AFCS v1.2.1** (1/17/21)
 
