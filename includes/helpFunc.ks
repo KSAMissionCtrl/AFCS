@@ -23,7 +23,8 @@ function setAbort {
 // used to determine when the vessel is pointing in a given direction
 function pointingAt {
   parameter vector.
-  return vang(ship:facing:forevector,vector) <2.
+  parameter offset is 2.
+  return vang(ship:facing:forevector,vector) < offset.
 }
 // used to determine how far from the given vector the ship is pointing
 function pointingFrom {
