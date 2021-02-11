@@ -1,0 +1,2 @@
+output("Connecting batteries to electical system").
+for battery in ship:partsnamed("ca.battery.sNR") if battery:getmodule("ModuleResourceConverter"):hasevent("Connect Battery") battery:getmodule("ModuleResourceConverter"):doevent("Connect Battery").

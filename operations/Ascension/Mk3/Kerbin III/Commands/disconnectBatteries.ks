@@ -1,0 +1,2 @@
+output("Disconnecting batteries from electical system").
+for battery in ship:partsnamed("ca.battery.sNR") if battery:getmodule("ModuleResourceConverter"):hasevent("Disconnect Battery") battery:getmodule("ModuleResourceConverter"):doevent("Disconnect Battery").
