@@ -24,6 +24,16 @@ Have a look in the [Operations folder](https://github.com/KSAMissionCtrl/AFCS/tr
 
 ## Change Log
 
+**Ascension Mk3 Flight 1** (2/11/21)
+
+- Based largely off the operational files of the last Mk2 mission
+- Ascent code modified to use internal staging
+- Phased ascent simplified
+- Fixed improper chute deployment handling in deorbit code
+- Additional logging added for radiation and target pitch
+- Ascent abort code expanded to allow for return of entire second stage if needed
+- Better detection of engine malfunctions
+
 **AFCS v1.3.0** (2/11/21)
 
 - [helpFunc.ks] You can now pass an optional second parameter to `pointingAt()` if you don't want to use the default angle of within 2° to decide if `true` or `false` is returned
