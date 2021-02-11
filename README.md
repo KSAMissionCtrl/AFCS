@@ -24,6 +24,10 @@ Have a look in the [Operations folder](https://github.com/KSAMissionCtrl/AFCS/tr
 
 ## Change Log
 
+**AFCS v1.3.0** (2/11/21)
+
+- [helpFunc.ks] You can now pass an optional second parameter to `pointingAt()` if you don't want to use the default angle of within 2° to decide if `true` or `false` is returned
+
 **Progeny Mk6 Block II Flight 4** (1/19/21)
 
 - Adjusted launch timing
